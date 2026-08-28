@@ -1,57 +1,70 @@
-/* ============================================
-   SIGNOVA - Global Styles
-   Indian Sign Language Recognition Platform
-   ============================================ */
+/* ==========================================================================
+   SIGNOVA DESIGN SYSTEM — BLACK × PINK PREMIUM GRADIENT
+   ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700;800;900&display=swap');
 
 /* ──────────── CSS Variables ──────────── */
-
 :root {
-  /* Primary Colors */
-  --bg-primary: #0B1020;
-  --bg-secondary: #111827;
-  --bg-card: rgba(17, 24, 39, 0.8);
-  --bg-glass: rgba(255, 255, 255, 0.05);
+  /* Dark Foundation */
+  --bg-black: #050505;
+  --bg-charcoal: #0B080D;
+  --bg-plum: #130914;
+  --bg-burgundy: #1C0B18;
+  --bg-card: rgba(22, 11, 23, 0.72);
+  --bg-card-hover: rgba(32, 16, 34, 0.85);
+  --bg-glass: rgba(255, 255, 255, 0.035);
+  --bg-surface: #100A12;
 
-  /* Accent Colors */
-  --accent-primary: #6C63FF;
-  --accent-secondary: #00D4FF;
-  --accent-gradient: linear-gradient(135deg, #6C63FF 0%, #00D4FF 100%);
-  --accent-glow: 0 0 30px rgba(108, 99, 255, 0.3);
+  /* Pink / Magenta Accent Palette */
+  --pink-primary: #FF2E93;
+  --pink-glow: #FF4081;
+  --pink-deep: #D81B60;
+  --pink-soft: #FDA4AF;
+  --pink-subtle: rgba(255, 46, 147, 0.12);
+  --pink-border: rgba(255, 46, 147, 0.22);
+  --pink-border-hover: rgba(255, 46, 147, 0.55);
+
+  /* Gradients */
+  --pink-gradient: linear-gradient(135deg, #FF2E93 0%, #FF6584 50%, #C026D3 100%);
+  --pink-btn-gradient: linear-gradient(135deg, #FF2E93 0%, #E11D48 100%);
+  --pink-glow-shadow: 0 0 25px rgba(255, 46, 147, 0.35);
+  --dark-hero-gradient: linear-gradient(135deg, rgba(28, 11, 24, 0.9) 0%, rgba(11, 8, 13, 0.95) 50%, rgba(5, 5, 5, 0.98) 100%);
+  --card-gradient: linear-gradient(180deg, rgba(255, 46, 147, 0.05) 0%, rgba(16, 10, 18, 0.85) 100%);
+  --active-nav-gradient: linear-gradient(135deg, rgba(255, 46, 147, 0.25) 0%, rgba(216, 27, 96, 0.15) 100%);
 
   /* Status Colors */
-  --success: #22C55E;
+  --success: #10B981;
   --warning: #F59E0B;
   --error: #EF4444;
+  --cyan-accent: #00D4FF;
 
   /* Text Colors */
   --text-primary: #FFFFFF;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
 
   /* Border */
-  --border-color: rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(108, 99, 255, 0.5);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 46, 147, 0.15);
 
-  /* Spacing */
-  --nav-height: 70px;
+  /* Layout & Spacing */
+  --nav-height: 72px;
 
-  /* Border Radius */
+  /* Radius */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-full: 9999px;
 
   /* Transitions */
-  --transition-fast: 0.2s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ──────────── Reset ──────────── */
-
 *,
 *::before,
 *::after {
@@ -63,19 +76,20 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  background-color: var(--bg-black);
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: var(--bg-primary);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-black);
   color: var(--text-primary);
   line-height: 1.6;
   overflow-x: hidden;
   min-height: 100vh;
+  letter-spacing: -0.01em;
 }
 
-/* ──────────── Background Pattern ──────────── */
-
+/* ──────────── Layered Dark Atmosphere with Subtle Pink Glow ──────────── */
 body::before {
   content: '';
   position: fixed;
@@ -84,9 +98,10 @@ body::before {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(108, 99, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(0, 212, 255, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(108, 99, 255, 0.04) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 15%, rgba(255, 46, 147, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 25%, rgba(192, 38, 211, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 85%, rgba(255, 46, 147, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(28, 11, 24, 0.4) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -96,12 +111,13 @@ body::before {
   z-index: 1;
 }
 
-/* ──────────── Typography ──────────── */
-
+/* ──────────── Typography Hierarchy ──────────── */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
   line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
 }
 
 a {
@@ -125,13 +141,12 @@ button {
   font-family: inherit;
 }
 
-input, textarea {
+input, textarea, select {
   font-family: inherit;
   outline: none;
 }
 
 /* ──────────── Utility Classes ──────────── */
-
 .container {
   width: 100%;
   max-width: 1200px;
@@ -139,55 +154,73 @@ input, textarea {
   padding: 0 24px;
 }
 
-.section {
-  padding: 100px 0;
-}
-
 .gradient-text {
-  background: var(--accent-gradient);
+  background: var(--pink-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* ──────────── Glass Card ──────────── */
+.eyebrow {
+  color: var(--pink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 
+.panel-label {
+  color: var(--pink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ──────────── Premium Cards ──────────── */
 .glass-card {
-  background: var(--bg-glass);
+  background: var(--bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   transition: var(--transition-normal);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .glass-card:hover {
-  border-color: var(--border-hover);
-  box-shadow: var(--accent-glow);
+  border-color: var(--pink-border-hover);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 46, 147, 0.15);
   transform: translateY(-2px);
 }
 
 /* ──────────── Buttons ──────────── */
-
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 32px;
-  background: var(--accent-gradient);
-  color: white;
-  font-weight: 600;
-  font-size: 1rem;
+  padding: 12px 28px;
+  background: var(--pink-btn-gradient);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.92rem;
   border-radius: var(--radius-full);
   transition: var(--transition-normal);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   cursor: pointer;
+  box-shadow: 0 4px 20px rgba(255, 46, 147, 0.35);
+  letter-spacing: -0.01em;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(108, 99, 255, 0.4);
+  box-shadow: 0 8px 30px rgba(255, 46, 147, 0.55);
+  background: linear-gradient(135deg, #FF4081 0%, #F43F5E 100%);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -195,64 +228,99 @@ input, textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 32px;
-  background: transparent;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
   transition: var(--transition-normal);
   cursor: pointer;
+  backdrop-filter: blur(8px);
 }
 
 .btn-secondary:hover {
-  border-color: var(--accent-primary);
-  background: rgba(108, 99, 255, 0.1);
+  border-color: var(--pink-border-hover);
+  background: rgba(255, 46, 147, 0.1);
+  color: #FFFFFF;
   transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(255, 46, 147, 0.2);
 }
 
-/* ──────────── Scrollbar ──────────── */
+.btn-secondary:active {
+  transform: translateY(0);
+}
 
+/* ──────────── Custom Scrollbar ──────────── */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--bg-black);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--accent-primary);
+  background: rgba(255, 46, 147, 0.35);
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-secondary);
+  background: var(--pink-primary);
 }
 
-/* ──────────── Page Transition ──────────── */
-
+/* ──────────── Page Wrapper ──────────── */
 .page-wrapper {
   min-height: calc(100vh - var(--nav-height));
   padding-top: var(--nav-height);
 }
 
-/* ──────────── Responsive ──────────── */
+/* ──────────── Light Theme Overrides ──────────── */
+[data-theme='light'] {
+  --bg-black: #FAFAFB;
+  --bg-charcoal: #F4F4F6;
+  --bg-plum: #EBE5ED;
+  --bg-burgundy: #E5DCE8;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-card-hover: #FFFFFF;
+  --bg-glass: rgba(0, 0, 0, 0.03);
+  --bg-surface: #FFFFFF;
 
+  --text-primary: #120914;
+  --text-secondary: #52525B;
+  --text-muted: #71717A;
+  --border-color: rgba(0, 0, 0, 0.08);
+
+  --dark-hero-gradient: linear-gradient(135deg, #FDF2F8 0%, #FFFFFF 100%);
+  --card-gradient: linear-gradient(180deg, rgba(255, 46, 147, 0.04) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+[data-theme='light'] body::before {
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(255, 46, 147, 0.06) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 25%, rgba(192, 38, 211, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(253, 242, 248, 0.6) 0%, transparent 100%);
+}
+
+/* ──────────── Text Scaling Accessibility ──────────── */
+[data-text-size='large'] {
+  font-size: 18px;
+}
+
+[data-text-size='xlarge'] {
+  font-size: 20px;
+}
+
+/* ──────────── Responsive Display Rules ──────────── */
 @media (max-width: 768px) {
   .container {
     padding: 0 16px;
   }
 
-  .section {
-    padding: 60px 0;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    padding: 12px 24px;
-    font-size: 0.9rem;
+  body {
+    padding-bottom: 74px;
   }
 
   .desktop-only {

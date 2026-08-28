@@ -1,591 +1,500 @@
-import { useState, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, useCallback } from 'react'
 import {
-  Camera,
   Volume2,
-  Trash2,
   Copy,
-  Check,
-  Plus,
-  ArrowRight,
+  Trash2,
+  Undo2,
+  Redo2,
   Sparkles,
-  Clock,
-  Info,
+  Bookmark,
+  Check,
+  Hand,
+  Layers,
 } from 'lucide-react'
-import CameraComponent from '../components/Camera'
-import ConfidenceBar from '../components/ConfidenceBar'
+import Camera from '../components/Camera'
+import { smoothGrammar, formatRawSequence } from '../services/grammar'
+import { saveLocalTranslation } from '../services/localStore'
+import { createTranslation } from '../services/api'
+import { useLanguage } from '../context/LanguageContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function Translator() {
+  const { language, t } = useLanguage()
+  const { isAuthenticated } = useAuth()
+
+  // Translation sequence buffer
+  const [tokens, setTokens] = useState([])
+  const [historyStack, setHistoryStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
   const [currentGesture, setCurrentGesture] = useState(null)
-  const [sentence, setSentence] = useState([])
+  const [useGrammarSmoothing, setUseGrammarSmoothing] = useState(true)
+
+  // Status feedback
+  const [isCopied, setIsCopied] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [detectionCount, setDetectionCount] = useState(0)
 
-  // Stability buffer for duplicate filtering
-  const stabilityRef = useRef({
-    lastSign: null,
-    count: 0,
-    threshold: 8, // Must detect same sign 8 times before adding
-  })
+  // Gesture debouncer ref (avoids duplicate frame pushes)
+  const lastDetectedSignRef = useRef(null)
+  const lastDetectTimeRef = useRef(0)
 
-  // ── Handle gesture from camera ──
-  const handleGestureDetected = useCallback((gesture) => {
-    if (!gesture || !gesture.sign) return
+  // ── Handle incoming gesture from Camera ──
+  const handleGestureDetected = useCallback((detected) => {
+    setCurrentGesture(detected)
+    const now = Date.now()
 
-    setCurrentGesture(gesture)
-    setDetectionCount((c) => c + 1)
+    // Debounce: must be high confidence and at least 1.4s since same sign
+    if (detected.confidence >= 0.75) {
+      if (
+        lastDetectedSignRef.current !== detected.sign ||
+        now - lastDetectTimeRef.current > 1600
+      ) {
+        lastDetectedSignRef.current = detected.sign
+        lastDetectTimeRef.current = now
 
-    const stability = stabilityRef.current
-
-    if (gesture.sign === stability.lastSign) {
-      stability.count++
-
-      // Add to sentence only after stable detection
-      if (stability.count === stability.threshold) {
-        setSentence((prev) => {
-          // Don't add if last word in sentence is the same
-          if (prev.length > 0 && prev[prev.length - 1] === gesture.sign) {
-            return prev
-          }
-          return [...prev, gesture.sign]
+        setTokens((prev) => {
+          setHistoryStack((h) => [...h, prev])
+          setRedoStack([])
+          return [...prev, detected.sign]
         })
-        stability.count = 0 // Reset after adding
       }
-    } else {
-      stability.lastSign = gesture.sign
-      stability.count = 1
     }
   }, [])
 
-  // ── Build sentence string ──
-  const sentenceText = sentence.join(' ')
+  // ── Undo Action ──
+  const handleUndo = () => {
+    if (tokens.length === 0) return
+    const lastState = historyStack[historyStack.length - 1] || []
+    setRedoStack((r) => [...r, tokens])
+    setTokens(lastState)
+    setHistoryStack((h) => h.slice(0, -1))
+  }
 
-  // ── Text to Speech ──
-  const speakSentence = () => {
-    if (!sentenceText || isSpeaking) return
+  // ── Redo Action ──
+  const handleRedo = () => {
+    if (redoStack.length === 0) return
+    const nextState = redoStack[redoStack.length - 1]
+    setHistoryStack((h) => [...h, tokens])
+    setTokens(nextState)
+    setRedoStack((r) => r.slice(0, -1))
+  }
 
-    const utterance = new SpeechSynthesisUtterance(sentenceText)
-    utterance.rate = 0.9
-    utterance.pitch = 1
-    utterance.lang = 'en-IN'
+  // ── Clear Sequence ──
+  const handleClear = () => {
+    if (tokens.length === 0) return
+    setHistoryStack((h) => [...h, tokens])
+    setTokens([])
+    setRedoStack([])
+  }
+
+  // ── Derived Outputs ──
+  const rawTranslation = formatRawSequence(tokens)
+  const smoothedTranslation = smoothGrammar(tokens, language)
+  const activeTranslation = useGrammarSmoothing ? smoothedTranslation : rawTranslation
+
+  // ── Text-to-Speech ──
+  const handleSpeak = () => {
+    if (!activeTranslation || !('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+
+    const utterance = new SpeechSynthesisUtterance(activeTranslation)
+    utterance.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US'
+    utterance.rate = 0.95
 
     utterance.onstart = () => setIsSpeaking(true)
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = () => setIsSpeaking(false)
 
-    window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
   }
 
-  // ── Copy to clipboard ──
-  const copySentence = async () => {
-    if (!sentenceText) return
-    await navigator.clipboard.writeText(sentenceText)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  // ── Copy Output ──
+  const handleCopy = async () => {
+    if (!activeTranslation) return
+    try {
+      await navigator.clipboard.writeText(activeTranslation)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 2000)
+    } catch {
+      // Fallback
+    }
   }
 
-  // ── Clear sentence ──
-  const clearSentence = () => {
-    setSentence([])
-    window.speechSynthesis.cancel()
-    setIsSpeaking(false)
-  }
+  // ── Save Translation ──
+  const handleSave = async () => {
+    if (!activeTranslation) return
 
-  // ── Remove last word ──
-  const removeLastWord = () => {
-    setSentence((prev) => prev.slice(0, -1))
+    const record = {
+      rawText: rawTranslation,
+      smoothedText: smoothedTranslation,
+      tokens,
+      language,
+      confidence: currentGesture ? currentGesture.confidence : 0.85,
+    }
+
+    // Save locally
+    saveLocalTranslation(record)
+
+    // Save to API if authenticated
+    if (isAuthenticated) {
+      try {
+        await createTranslation({
+          detectedText: activeTranslation,
+          translatedText: activeTranslation,
+          confidenceScore: record.confidence,
+          language,
+        })
+      } catch (err) {
+        console.warn('Could not sync translation to cloud database:', err.message)
+      }
+    }
+
+    setIsSaved(true)
+    setTimeout(() => setIsSaved(false), 2200)
   }
 
   return (
-    <div className="page-wrapper">
-      <div className="container" style={styles.page}>
-
+    <main className="page-wrapper">
+      <div className="container" style={styles.container}>
         {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={styles.header}
-        >
-          <div>
-            <h1 style={styles.title}>
-              <Camera size={28} color="#6C63FF" />
-              Live <span className="gradient-text">Translator</span>
-            </h1>
-            <p style={styles.subtitle}>
-              Show ISL signs to your camera. AI will recognize and translate them in real-time.
-            </p>
+        <div style={styles.header}>
+          <p className="eyebrow">{t('nav_translator', 'REAL-TIME TRANSLATION STUDIO')}</p>
+          <h1 style={styles.title}>{t('trans_title', 'Live ISL Translation')}</h1>
+          <p style={styles.subtitle}>
+            {t(
+              'trans_subtitle',
+              'Perform Indian Sign Language gestures in front of the camera for instant text and voice translation.'
+            )}
+          </p>
+        </div>
+
+        {/* Split Studio Grid */}
+        <div style={styles.layout}>
+          {/* Left: Camera Feed */}
+          <div style={styles.cameraCol}>
+            <Camera onGestureDetected={handleGestureDetected} />
           </div>
-          <div style={styles.headerBadge}>
-            <Sparkles size={14} />
-            {detectionCount} detections
-          </div>
-        </motion.div>
 
-        {/* Main Grid */}
-        <div style={styles.grid}>
+          {/* Right: Studio Translation Panel */}
+          <div style={styles.panelCol}>
+            <div className="glass-card" style={styles.panelCard}>
+              {/* Header with Live Status */}
+              <div style={styles.panelTop}>
+                <div style={styles.panelHeading}>
+                  <Hand size={18} color="var(--pink-soft)" />
+                  <h3 style={styles.panelTitle}>{t('trans_live_sequence', 'Sign Sequence Buffer')}</h3>
+                </div>
 
-          {/* Left: Camera */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            style={styles.cameraSection}
-          >
-            <CameraComponent onGestureDetected={handleGestureDetected} />
-
-            {/* Current Detection Card */}
-            <AnimatePresence>
-              {currentGesture && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="glass-card"
-                  style={styles.detectionCard}
-                >
-                  <div style={styles.detectionHeader}>
-                    <span style={styles.detectionLabel}>
-                      Current Detection
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSentence((prev) => [...prev, currentGesture.sign])
-                        stabilityRef.current.count = 0
-                      }}
-                      style={styles.addBtn}
-                    >
-                      <Plus size={14} />
-                      Add to Sentence
-                    </button>
-                  </div>
-
-                  <div style={styles.detectionResult}>
-                    <span style={styles.detectionSign}>
-                      {currentGesture.sign}
-                    </span>
-                  </div>
-
-                  <ConfidenceBar
-                    confidence={currentGesture.confidence}
-                    label="Confidence"
-                  />
-
-                  <p style={styles.detectionNote}>
-                    <Info size={12} />
-                    Hold sign steady for auto-detection
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Right: Sentence Builder */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            style={styles.sentenceSection}
-          >
-
-            {/* Sentence Output */}
-            <div className="glass-card" style={styles.sentenceCard}>
-              <div style={styles.sentenceHeader}>
-                <h3 style={styles.sentenceTitle}>
-                  <ArrowRight size={18} color="#6C63FF" />
-                  Translation Output
-                </h3>
-                {sentence.length > 0 && (
-                  <span style={styles.wordCount}>
-                    {sentence.length} words
-                  </span>
-                )}
+                <div style={styles.tokenCountBadge}>
+                  {tokens.length} {tokens.length === 1 ? 'sign' : 'signs'}
+                </div>
               </div>
 
-              <div style={styles.sentenceOutput}>
-                {sentence.length === 0 ? (
-                  <div style={styles.emptyState}>
-                    <Clock size={32} color="rgba(108,99,255,0.3)" />
-                    <p style={styles.emptyText}>
-                      Waiting for signs...
-                    </p>
-                    <p style={styles.emptySubtext}>
-                      Start your camera and show ISL gestures
-                    </p>
+              {/* Tokens Chip Buffer */}
+              <div style={styles.tokensArea}>
+                {tokens.length === 0 ? (
+                  <div style={styles.emptyTokens}>
+                    <Layers size={28} color="var(--pink-soft)" style={{ opacity: 0.6 }} />
+                    <p>{t('trans_no_tokens', 'Perform signs in front of the camera to assemble your message.')}</p>
                   </div>
                 ) : (
-                  <motion.p
-                    key={sentenceText}
-                    initial={{ opacity: 0.5 }}
-                    animate={{ opacity: 1 }}
-                    style={styles.sentenceText}
-                  >
-                    {sentence.map((word, i) => (
-                      <motion.span
-                        key={`${word}-${i}`}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={styles.word}
-                      >
-                        {word}
-                        {i < sentence.length - 1 ? ' ' : ''}
-                      </motion.span>
+                  <div style={styles.tokenChipsWrap}>
+                    {tokens.map((tok, idx) => (
+                      <span key={idx} style={styles.tokenChip}>
+                        {tok}
+                      </span>
                     ))}
-                    <span style={styles.cursor}>|</span>
-                  </motion.p>
+                  </div>
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div style={styles.actions}>
+              {/* Buffer Controls: Undo, Redo, Clear */}
+              <div style={styles.bufferControls}>
                 <button
-                  onClick={speakSentence}
-                  disabled={!sentenceText || isSpeaking}
-                  style={{
-                    ...styles.actionBtn,
-                    ...styles.speakBtn,
-                    opacity: !sentenceText ? 0.4 : 1,
-                  }}
+                  onClick={handleUndo}
+                  disabled={tokens.length === 0}
+                  className="btn-secondary"
+                  style={styles.actionBtn}
+                  title="Undo last sign"
                 >
-                  <Volume2 size={16} />
-                  {isSpeaking ? 'Speaking...' : 'Speak'}
+                  <Undo2 size={15} />
+                  {t('trans_undo', 'Undo')}
                 </button>
 
                 <button
-                  onClick={copySentence}
-                  disabled={!sentenceText}
-                  style={{
-                    ...styles.actionBtn,
-                    opacity: !sentenceText ? 0.4 : 1,
-                  }}
+                  onClick={handleRedo}
+                  disabled={redoStack.length === 0}
+                  className="btn-secondary"
+                  style={styles.actionBtn}
+                  title="Redo sign"
                 >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                  {copied ? 'Copied!' : 'Copy'}
+                  <Redo2 size={15} />
+                  {t('trans_redo', 'Redo')}
                 </button>
 
                 <button
-                  onClick={removeLastWord}
-                  disabled={sentence.length === 0}
-                  style={{
-                    ...styles.actionBtn,
-                    opacity: sentence.length === 0 ? 0.4 : 1,
-                  }}
+                  onClick={handleClear}
+                  disabled={tokens.length === 0}
+                  className="btn-secondary"
+                  style={{ ...styles.actionBtn, color: '#EF4444', borderColor: 'rgba(239,68,68,0.25)' }}
+                  title="Clear all"
                 >
-                  Undo
+                  <Trash2 size={15} />
+                  {t('trans_clear', 'Clear')}
+                </button>
+              </div>
+
+              {/* Grammar Smoothing Toggle */}
+              <div style={styles.grammarToggleRow}>
+                <label style={styles.toggleLabel}>
+                  <input
+                    type="checkbox"
+                    checked={useGrammarSmoothing}
+                    onChange={(e) => setUseGrammarSmoothing(e.target.checked)}
+                    style={{ cursor: 'pointer', accentColor: 'var(--pink-primary)' }}
+                  />
+                  <Sparkles size={15} color="var(--pink-soft)" />
+                  <span>{t('trans_smooth_grammar', 'AI Grammar Smoothing (Natural Sentence)')}</span>
+                </label>
+              </div>
+
+              {/* Translation Output Displays */}
+              <div style={styles.outputBox}>
+                <span className="panel-label">
+                  {useGrammarSmoothing ? t('trans_improved', 'Translated Sentence') : t('trans_raw', 'Raw ISL Stream')}
+                </span>
+
+                <div style={styles.outputContent}>
+                  {activeTranslation ? (
+                    <p style={styles.outputText}>{activeTranslation}</p>
+                  ) : (
+                    <p style={styles.outputPlaceholder}>
+                      {t('trans_awaiting', 'Awaiting signs for translation...')}
+                    </p>
+                  )}
+                </div>
+
+                {useGrammarSmoothing && rawTranslation && (
+                  <div style={styles.rawSubtitle}>
+                    <small>Raw Tokens: {rawTranslation}</small>
+                  </div>
+                )}
+              </div>
+
+              {/* Output Actions: Speak, Copy, Save */}
+              <div style={styles.footerActions}>
+                <button
+                  onClick={handleSpeak}
+                  disabled={!activeTranslation || isSpeaking}
+                  className="btn-secondary"
+                  style={styles.footerBtn}
+                >
+                  <Volume2 size={16} color="var(--pink-soft)" />
+                  {isSpeaking ? t('common_speaking', 'Speaking...') : t('trans_speak', 'Speak Text')}
                 </button>
 
                 <button
-                  onClick={clearSentence}
-                  disabled={sentence.length === 0}
-                  style={{
-                    ...styles.actionBtn,
-                    ...styles.clearBtn,
-                    opacity: sentence.length === 0 ? 0.4 : 1,
-                  }}
+                  onClick={handleCopy}
+                  disabled={!activeTranslation}
+                  className="btn-secondary"
+                  style={styles.footerBtn}
                 >
-                  <Trash2 size={16} />
-                  Clear
+                  {isCopied ? <Check size={16} color="#10B981" /> : <Copy size={16} />}
+                  {isCopied ? t('common_copied', 'Copied!') : t('common_copy', 'Copy')}
+                </button>
+
+                <button
+                  onClick={handleSave}
+                  disabled={!activeTranslation}
+                  className="btn-primary"
+                  style={styles.footerBtn}
+                >
+                  {isSaved ? <Check size={16} /> : <Bookmark size={16} />}
+                  {isSaved ? t('common_saved', 'Saved!') : t('trans_save_history', 'Save Translation')}
                 </button>
               </div>
             </div>
-
-            {/* Quick Reference */}
-            <div className="glass-card" style={styles.referenceCard}>
-              <h4 style={styles.referenceTitle}>
-                Supported Signs
-              </h4>
-              <div style={styles.referenceGrid}>
-                {[
-                  'HELLO', 'THANK YOU', 'YES', 'NO', 'PLEASE',
-                  'SORRY', 'HELP', 'GOOD', 'BAD', 'LOVE',
-                  'WATER', 'FOOD', 'WELCOME', 'I', 'YOU',
-                ].map((sign) => (
-                  <span
-                    key={sign}
-                    style={{
-                      ...styles.referenceChip,
-                      ...(currentGesture?.sign === sign
-                        ? styles.referenceChipActive
-                        : {}),
-                    }}
-                  >
-                    {sign}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Privacy Notice */}
-            <div style={styles.privacyNotice}>
-              <Info size={14} />
-              <span>
-                Your camera feed is processed locally.
-                No video is recorded or stored.
-              </span>
-            </div>
-          </motion.div>
+          </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes blink {
-          0%, 50% { opacity: 1; }
-          51%, 100% { opacity: 0; }
-        }
-      `}</style>
-    </div>
+    </main>
   )
 }
 
 const styles = {
-  page: {
-    padding: '100px 24px 60px',
+  container: {
+    padding: '36px 24px 80px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '28px',
     maxWidth: '1200px',
-    margin: '0 auto',
   },
   header: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '32px',
-    flexWrap: 'wrap',
-    gap: '16px',
+    flexDirection: 'column',
+    gap: '6px',
   },
   title: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    fontSize: '1.8rem',
-    fontWeight: 800,
-    fontFamily: "'Space Grotesk', sans-serif",
-    marginBottom: '8px',
+    fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)',
+    fontWeight: 900,
+    color: 'var(--text-primary)',
   },
   subtitle: {
-    fontSize: '0.95rem',
-    color: '#9CA3AF',
-    maxWidth: '500px',
+    fontSize: '0.92rem',
+    color: 'var(--text-secondary)',
+    maxWidth: '650px',
   },
-  headerBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '8px 16px',
-    background: 'rgba(108, 99, 255, 0.1)',
-    border: '1px solid rgba(108, 99, 255, 0.2)',
-    borderRadius: '9999px',
-    fontSize: '0.8rem',
-    fontWeight: 500,
-    color: '#6C63FF',
-  },
-  grid: {
+  layout: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1fr 1.05fr',
     gap: '24px',
     alignItems: 'start',
   },
-  cameraSection: {
+  cameraCol: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
   },
-  detectionCard: {
-    padding: '20px',
-  },
-  detectionHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '12px',
-  },
-  detectionLabel: {
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-  },
-  addBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '6px 12px',
-    background: 'rgba(108, 99, 255, 0.1)',
-    border: '1px solid rgba(108, 99, 255, 0.3)',
-    borderRadius: '9999px',
-    color: '#6C63FF',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all 0.3s',
-  },
-  detectionResult: {
-    marginBottom: '12px',
-  },
-  detectionSign: {
-    fontSize: '2rem',
-    fontWeight: 800,
-    fontFamily: "'Space Grotesk', sans-serif",
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  detectionNote: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginTop: '12px',
-    fontSize: '0.75rem',
-    color: '#6B7280',
-  },
-  sentenceSection: {
+  panelCol: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
   },
-  sentenceCard: {
+  panelCard: {
     padding: '24px',
-  },
-  sentenceHeader: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '16px',
+    flexDirection: 'column',
+    gap: '18px',
+    borderRadius: '20px',
+    background: 'linear-gradient(180deg, rgba(28, 11, 24, 0.7) 0%, rgba(11, 8, 13, 0.9) 100%)',
+    border: '1px solid var(--border-color)',
   },
-  sentenceTitle: {
+  panelTop: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  panelHeading: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    fontSize: '1rem',
+  },
+  panelTitle: {
+    fontSize: '1.05rem',
+    fontWeight: 800,
+    color: 'var(--text-primary)',
+  },
+  tokenCountBadge: {
+    padding: '3px 10px',
+    borderRadius: '9999px',
+    background: 'rgba(255, 46, 147, 0.12)',
+    border: '1px solid var(--pink-border)',
+    color: 'var(--pink-soft)',
+    fontSize: '0.72rem',
     fontWeight: 700,
   },
-  wordCount: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
-    fontWeight: 500,
-  },
-  sentenceOutput: {
-    minHeight: '120px',
-    padding: '20px',
-    background: 'rgba(0,0,0,0.3)',
-    borderRadius: '12px',
-    border: '1px solid rgba(255,255,255,0.05)',
-    marginBottom: '16px',
-  },
-  emptyState: {
+  tokensArea: {
+    minHeight: '90px',
+    padding: '14px',
+    background: 'rgba(5, 5, 5, 0.6)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '14px',
     display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: '8px',
-    padding: '20px 0',
   },
-  emptyText: {
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: '#6B7280',
-  },
-  emptySubtext: {
-    fontSize: '0.8rem',
-    color: '#4B5563',
-  },
-  sentenceText: {
-    fontSize: '1.3rem',
-    fontWeight: 600,
-    lineHeight: 1.8,
-    color: '#fff',
-    fontFamily: "'Space Grotesk', sans-serif",
-  },
-  word: {
-    display: 'inline',
-  },
-  cursor: {
-    color: '#6C63FF',
-    animation: 'blink 1s step-end infinite',
-    fontWeight: 300,
-  },
-  actions: {
+  emptyTokens: {
     display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    color: 'var(--text-muted)',
+    fontSize: '0.84rem',
+    padding: '10px',
+  },
+  tokenChipsWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    width: '100%',
+  },
+  tokenChip: {
+    padding: '6px 14px',
+    borderRadius: '9999px',
+    background: 'linear-gradient(135deg, rgba(255, 46, 147, 0.25) 0%, rgba(28, 11, 24, 0.8) 100%)',
+    border: '1px solid rgba(255, 46, 147, 0.45)',
+    color: '#FFFFFF',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+    boxShadow: '0 0 12px rgba(255, 46, 147, 0.15)',
+  },
+  bufferControls: {
+    display: 'flex',
+    alignItems: 'center',
     gap: '8px',
     flexWrap: 'wrap',
   },
   actionBtn: {
+    padding: '8px 14px',
+    fontSize: '0.8rem',
+    gap: '6px',
+  },
+  grammarToggleRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    padding: '10px 16px',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '10px',
-    color: '#9CA3AF',
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all 0.3s',
+    padding: '10px 14px',
+    background: 'rgba(255, 46, 147, 0.06)',
+    border: '1px solid rgba(255, 46, 147, 0.2)',
+    borderRadius: '12px',
   },
-  speakBtn: {
-    background: 'rgba(108, 99, 255, 0.1)',
-    borderColor: 'rgba(108, 99, 255, 0.3)',
-    color: '#6C63FF',
-  },
-  clearBtn: {
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    color: '#EF4444',
-  },
-  referenceCard: {
-    padding: '20px',
-  },
-  referenceTitle: {
-    fontSize: '0.85rem',
-    fontWeight: 700,
-    marginBottom: '12px',
-    color: '#9CA3AF',
-  },
-  referenceGrid: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-  },
-  referenceChip: {
-    padding: '4px 10px',
-    fontSize: '0.7rem',
-    fontWeight: 600,
-    color: '#6B7280',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '6px',
-    transition: 'all 0.3s',
-  },
-  referenceChipActive: {
-    color: '#fff',
-    background: 'rgba(108, 99, 255, 0.2)',
-    borderColor: 'rgba(108, 99, 255, 0.5)',
-  },
-  privacyNotice: {
+  toggleLabel: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '12px 16px',
-    background: 'rgba(34, 197, 94, 0.05)',
-    border: '1px solid rgba(34, 197, 94, 0.15)',
-    borderRadius: '10px',
-    fontSize: '0.75rem',
-    color: '#22C55E',
-    fontWeight: 500,
+    fontSize: '0.82rem',
+    fontWeight: 600,
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    width: '100%',
   },
-}
-
-// Responsive
-const responsiveStyle = document.createElement('style')
-responsiveStyle.textContent = `
-  @media (max-width: 900px) {
-    .container > div[style*="grid-template-columns"] {
-      grid-template-columns: 1fr !important;
-    }
-  }
-`
-if (!document.getElementById('translator-responsive')) {
-  responsiveStyle.id = 'translator-responsive'
-  document.head.appendChild(responsiveStyle)
+  outputBox: {
+    padding: '18px',
+    background: 'rgba(5, 5, 5, 0.7)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  outputContent: {
+    minHeight: '44px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  outputText: {
+    fontSize: '1.25rem',
+    fontWeight: 800,
+    color: '#FFFFFF',
+    fontFamily: "'Space Grotesk', sans-serif",
+    lineHeight: 1.4,
+  },
+  outputPlaceholder: {
+    fontSize: '0.86rem',
+    color: 'var(--text-muted)',
+    fontStyle: 'italic',
+  },
+  rawSubtitle: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.74rem',
+    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+    paddingTop: '6px',
+  },
+  footerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  footerBtn: {
+    flex: 1,
+    padding: '11px 16px',
+    fontSize: '0.84rem',
+    minWidth: '120px',
+  },
 }

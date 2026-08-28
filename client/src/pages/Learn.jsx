@@ -1,627 +1,688 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useMemo, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  BookOpen,
   Search,
-  ChevronRight,
   X,
   Play,
-  ArrowLeft,
+  Heart,
+  Lightbulb,
+  BookOpen,
+  CheckCircle2,
+  Volume2,
 } from 'lucide-react'
-
-// ISL Sign Database
-const SIGNS_DATA = [
-  {
-    id: 1,
-    name: 'HELLO',
-    category: 'Greetings',
-    difficulty: 'Beginner',
-    description:
-      'Raise your open hand near your forehead and move it outward in a small wave.',
-    steps: [
-      'Raise your dominant hand to forehead level',
-      'Keep all fingers extended and together',
-      'Move your hand outward and slightly to the side',
-      'This mimics a casual salute or wave',
-    ],
-    tips: 'Keep the movement smooth and natural. Think of a military salute turning into a wave.',
-    emoji: '👋',
-  },
-  {
-    id: 2,
-    name: 'THANK YOU',
-    category: 'Greetings',
-    difficulty: 'Beginner',
-    description:
-      'Touch your chin with your fingertips and move your hand forward.',
-    steps: [
-      'Place the fingertips of your flat hand on your chin',
-      'Move your hand forward and slightly downward',
-      'Keep your palm facing up during the movement',
-    ],
-    tips: 'The motion resembles blowing a kiss from your chin.',
-    emoji: '🙏',
-  },
-  {
-    id: 3,
-    name: 'YES',
-    category: 'Basics',
-    difficulty: 'Beginner',
-    description:
-      'Make a fist and nod it up and down, mimicking a head nod.',
-    steps: [
-      'Make a fist with your dominant hand',
-      'Hold it at chest level',
-      'Bend your wrist up and down repeatedly',
-    ],
-    tips: 'Think of your fist as a tiny head nodding "yes".',
-    emoji: '✅',
-  },
-  {
-    id: 4,
-    name: 'NO',
-    category: 'Basics',
-    difficulty: 'Beginner',
-    description:
-      'Extend your index and middle finger, then tap them against your thumb.',
-    steps: [
-      'Extend your index and middle fingers',
-      'Keep ring and pinky fingers folded',
-      'Tap the extended fingers against your thumb repeatedly',
-    ],
-    tips: 'The motion looks like a mouth opening and closing saying "no".',
-    emoji: '❌',
-  },
-  {
-    id: 5,
-    name: 'PLEASE',
-    category: 'Basics',
-    difficulty: 'Beginner',
-    description:
-      'Place your flat hand on your chest and move it in a circular motion.',
-    steps: [
-      'Place your open palm flat against your chest',
-      'Move your hand in a clockwise circle',
-      'Keep contact with your chest throughout',
-    ],
-    tips: 'The circular motion on the chest conveys sincerity.',
-    emoji: '🙏',
-  },
-  {
-    id: 6,
-    name: 'SORRY',
-    category: 'Emotions',
-    difficulty: 'Beginner',
-    description:
-      'Make a fist and rub it in a circular motion over your chest.',
-    steps: [
-      'Make a fist with your dominant hand',
-      'Place it on the center of your chest',
-      'Rub in a small clockwise circle',
-    ],
-    tips: 'The circular rubbing motion shows genuine remorse.',
-    emoji: '😔',
-  },
-  {
-    id: 7,
-    name: 'HELP',
-    category: 'Basics',
-    difficulty: 'Beginner',
-    description:
-      'Place your fist on your open palm and raise both hands upward.',
-    steps: [
-      'Make a fist with your dominant hand (thumb up)',
-      'Place the fist on the palm of your other hand',
-      'Raise both hands together upward',
-    ],
-    tips: 'The upward motion symbolizes lifting someone up.',
-    emoji: '🆘',
-  },
-  {
-    id: 8,
-    name: 'GOOD',
-    category: 'Emotions',
-    difficulty: 'Beginner',
-    description:
-      'Touch your chin with your fingertips, then move your hand down to rest on your other hand.',
-    steps: [
-      'Place fingertips of flat hand on your chin',
-      'Move hand downward',
-      'Land it on the palm of your other hand',
-    ],
-    tips: 'Similar to "thank you" but ends on the other hand.',
-    emoji: '👍',
-  },
-  {
-    id: 9,
-    name: 'LOVE',
-    category: 'Emotions',
-    difficulty: 'Beginner',
-    description:
-      'Cross both arms over your chest as if hugging yourself.',
-    steps: [
-      'Extend both arms in front of you',
-      'Cross them over your chest',
-      'Squeeze gently as if giving yourself a hug',
-    ],
-    tips: 'This is one of the most universally recognized signs.',
-    emoji: '❤️',
-  },
-  {
-    id: 10,
-    name: 'WATER',
-    category: 'Food & Drink',
-    difficulty: 'Beginner',
-    description:
-      'Form the letter W with your fingers and tap your chin twice.',
-    steps: [
-      'Extend your index, middle, and ring fingers (W shape)',
-      'Fold your thumb and pinky',
-      'Tap your chin twice with the fingertips',
-    ],
-    tips: 'The W shape stands for "water".',
-    emoji: '💧',
-  },
-  {
-    id: 11,
-    name: 'FOOD',
-    category: 'Food & Drink',
-    difficulty: 'Beginner',
-    description:
-      'Tap your fingertips to your lips repeatedly.',
-    steps: [
-      'Bring all fingertips together',
-      'Tap them against your lips',
-      'Repeat 2-3 times',
-    ],
-    tips: 'Mimics the action of eating.',
-    emoji: '🍽️',
-  },
-  {
-    id: 12,
-    name: 'WELCOME',
-    category: 'Greetings',
-    difficulty: 'Beginner',
-    description:
-      'Open your hand and move it from your chin outward toward the person.',
-    steps: [
-      'Start with flat hand near your chin',
-      'Move hand forward and outward',
-      'Palm faces the person you are welcoming',
-    ],
-    tips: 'Similar to "thank you" but directed outward.',
-    emoji: '🤗',
-  },
-]
-
-const CATEGORIES = ['All', 'Greetings', 'Basics', 'Emotions', 'Food & Drink']
+import { SIGNS, CATEGORIES } from '../data/signs'
+import SignCard from '../components/SignCard'
+import AnimatedHandSign from '../components/AnimatedHandSign'
+import { useLanguage } from '../context/LanguageContext'
+import { isFavourite, toggleFavourite } from '../services/localStore'
 
 export default function Learn() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [selectedSign, setSelectedSign] = useState(null)
+  const { language, t } = useLanguage()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const filteredSigns = SIGNS_DATA.filter((sign) => {
-    const matchesSearch = sign.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-    const matchesCategory =
-      selectedCategory === 'All' || sign.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  const [selectedCategory, setSelectedCategory] = useState('ALL')
+  const [selectedDifficulty, setSelectedDifficulty] = useState('ALL')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeModalSign, setActiveModalSign] = useState(null)
+  const [modalFaved, setModalFaved] = useState(false)
+
+  // ── Sync incoming target sign from router navigation state ──
+  useEffect(() => {
+    if (location.state?.selectedSign) {
+      setActiveModalSign(location.state.selectedSign)
+      setModalFaved(isFavourite(location.state.selectedSign.id))
+    }
+  }, [location.state])
+
+  // ── Filter Signs ──
+  const filteredSigns = useMemo(() => {
+    return SIGNS.filter((sign) => {
+      // Category filter
+      if (selectedCategory !== 'ALL' && sign.category !== selectedCategory) {
+        return false
+      }
+
+      // Difficulty filter
+      if (selectedDifficulty !== 'ALL' && sign.difficulty !== selectedDifficulty) {
+        return false
+      }
+
+      // Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const nameMatch = sign.name.toLowerCase().includes(q)
+        const meaningEn = typeof sign.meaning === 'string' ? sign.meaning.toLowerCase().includes(q) : sign.meaning?.en?.toLowerCase().includes(q)
+        const meaningTa = typeof sign.meaning === 'object' && sign.meaning?.ta?.toLowerCase().includes(q)
+        const meaningHi = typeof sign.meaning === 'object' && sign.meaning?.hi?.toLowerCase().includes(q)
+
+        return nameMatch || meaningEn || meaningTa || meaningHi
+      }
+
+      return true
+    })
+  }, [selectedCategory, selectedDifficulty, searchQuery])
+
+  // ── Modal Actions ──
+  const openSignModal = (sign) => {
+    setActiveModalSign(sign)
+    setModalFaved(isFavourite(sign.id))
+  }
+
+  const closeSignModal = () => {
+    setActiveModalSign(null)
+  }
+
+  const handleModalFavToggle = () => {
+    if (!activeModalSign) return
+    toggleFavourite(activeModalSign)
+    setModalFaved(!modalFaved)
+  }
+
+  const handlePracticeFromModal = (sign) => {
+    closeSignModal()
+    navigate('/practice', { state: { targetSign: sign.name } })
+  }
+
+  const handleSpeak = (text) => {
+    if (!text || !('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US'
+    utterance.rate = 0.95
+    window.speechSynthesis.speak(utterance)
+  }
 
   return (
-    <div className="page-wrapper">
-      <div className="container" style={styles.page}>
-
+    <main className="page-wrapper">
+      <div className="container" style={styles.container}>
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={styles.header}
-        >
-          <h1 style={styles.title}>
-            <BookOpen size={28} color="#6C63FF" />
-            Learn <span className="gradient-text">ISL</span>
-          </h1>
+        <div style={styles.header}>
+          <p className="eyebrow">{t('nav_learn', 'ISL VISUAL CURRICULUM')}</p>
+          <h1 style={styles.title}>{t('learn_title', 'Learn Indian Sign Language')}</h1>
           <p style={styles.subtitle}>
-            Master Indian Sign Language one gesture at a time.
-            Click any sign to learn how to perform it.
+            {t(
+              'learn_subtitle',
+              'Explore categorized visual guides, step-by-step hand gestures, and practical everyday phrases.'
+            )}
           </p>
-        </motion.div>
+        </div>
 
-        {/* Search + Filter */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          style={styles.controls}
-        >
+        {/* Search & Difficulty Filter Bar */}
+        <div style={styles.searchBarRow}>
+          {/* Search Box */}
           <div style={styles.searchBox}>
-            <Search size={18} color="#6B7280" />
+            <Search size={18} color="var(--pink-soft)" />
             <input
               type="text"
-              placeholder="Search signs..."
+              placeholder={t('learn_search_placeholder', 'Search signs by English, Tamil, or Hindi...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={styles.searchInput}
             />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} style={styles.clearSearchBtn}>
+                <X size={15} />
+              </button>
+            )}
           </div>
 
-          <div style={styles.filters}>
-            {CATEGORIES.map((cat) => (
+          {/* Difficulty Filter Tabs */}
+          <div style={styles.diffTabs}>
+            {['ALL', 'Beginner', 'Intermediate', 'Advanced'].map((diff) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={diff}
+                onClick={() => setSelectedDifficulty(diff)}
                 style={{
-                  ...styles.filterBtn,
-                  ...(selectedCategory === cat
-                    ? styles.filterBtnActive
-                    : {}),
+                  ...styles.diffTab,
+                  background: selectedDifficulty === diff ? 'linear-gradient(135deg, rgba(255, 46, 147, 0.25) 0%, rgba(28, 11, 24, 0.8) 100%)' : 'rgba(255, 255, 255, 0.04)',
+                  borderColor: selectedDifficulty === diff ? 'var(--pink-primary)' : 'var(--border-color)',
+                  color: selectedDifficulty === diff ? '#FFFFFF' : 'var(--text-secondary)',
+                  fontWeight: selectedDifficulty === diff ? 700 : 500,
                 }}
               >
-                {cat}
+                {diff === 'ALL' ? 'All Levels' : diff}
               </button>
             ))}
           </div>
-        </motion.div>
+        </div>
 
-        {/* Sign Grid */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          style={styles.grid}
-        >
-          {filteredSigns.map((sign, i) => (
-            <motion.div
+        {/* Category Pills Bar */}
+        <div style={styles.categoriesRow}>
+          <button
+            onClick={() => setSelectedCategory('ALL')}
+            style={{
+              ...styles.catPill,
+              background: selectedCategory === 'ALL' ? 'var(--pink-primary)' : 'rgba(255, 255, 255, 0.04)',
+              borderColor: selectedCategory === 'ALL' ? 'var(--pink-primary)' : 'var(--border-color)',
+              color: selectedCategory === 'ALL' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: selectedCategory === 'ALL' ? 700 : 500,
+            }}
+          >
+            {t('learn_all_categories', 'All Categories')} ({SIGNS.length})
+          </button>
+
+          {CATEGORIES.map((cat) => {
+            const catId = typeof cat === 'string' ? cat : cat.id
+            const catEmoji = typeof cat === 'object' && cat.emoji ? cat.emoji : '📁'
+            const catLabel =
+              typeof cat === 'object' && cat.label
+                ? cat.label[language] || cat.label.en
+                : catId
+            const count = SIGNS.filter((s) => s.category === catId).length
+            const isSelected = selectedCategory === catId
+
+            return (
+              <button
+                key={catId}
+                onClick={() => setSelectedCategory(catId)}
+                style={{
+                  ...styles.catPill,
+                  background: isSelected ? 'var(--pink-primary)' : 'rgba(255, 255, 255, 0.04)',
+                  borderColor: isSelected ? 'var(--pink-primary)' : 'var(--border-color)',
+                  color: isSelected ? '#FFFFFF' : 'var(--text-secondary)',
+                  fontWeight: isSelected ? 700 : 500,
+                }}
+              >
+                <span>{catEmoji}</span>
+                <span>{catLabel}</span>
+                <small style={styles.catCount}>({count})</small>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Pinterest-Style Visual Signs Grid */}
+        <div style={styles.cardsGrid}>
+          {filteredSigns.map((sign) => (
+            <SignCard
               key={sign.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="glass-card"
-              style={styles.signCard}
-              onClick={() => setSelectedSign(sign)}
-            >
-              <div style={styles.signEmoji}>{sign.emoji}</div>
-              <h3 style={styles.signName}>{sign.name}</h3>
-              <div style={styles.signMeta}>
-                <span style={styles.signCategory}>{sign.category}</span>
-                <span
-                  style={{
-                    ...styles.signDifficulty,
-                    color:
-                      sign.difficulty === 'Beginner'
-                        ? '#22C55E'
-                        : '#F59E0B',
-                  }}
-                >
-                  {sign.difficulty}
-                </span>
-              </div>
-              <div style={styles.signArrow}>
-                <ChevronRight size={16} />
-              </div>
-            </motion.div>
+              sign={sign}
+              onClick={openSignModal}
+              onPractice={(s) => navigate('/practice', { state: { targetSign: s.name } })}
+            />
           ))}
+        </div>
 
-          {filteredSigns.length === 0 && (
-            <div style={styles.noResults}>
-              <Search size={48} color="rgba(108,99,255,0.2)" />
-              <p>No signs found matching "{searchQuery}"</p>
-            </div>
-          )}
-        </motion.div>
+        {filteredSigns.length === 0 && (
+          <div className="glass-card" style={styles.emptyState}>
+            <BookOpen size={48} color="var(--pink-soft)" style={{ opacity: 0.5 }} />
+            <h3>No signs found</h3>
+            <p>Try adjusting your search keywords or switching category filters.</p>
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setSelectedCategory('ALL')
+                setSelectedDifficulty('ALL')
+              }}
+              className="btn-secondary"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
 
         {/* Sign Detail Modal */}
-        <AnimatePresence>
-          {selectedSign && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={styles.modalOverlay}
-              onClick={() => setSelectedSign(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                style={styles.modal}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => setSelectedSign(null)}
-                  style={styles.closeBtn}
-                >
-                  <X size={20} />
-                </button>
-
-                <div style={styles.modalHeader}>
-                  <span style={styles.modalEmoji}>
-                    {selectedSign.emoji}
-                  </span>
-                  <div>
-                    <h2 style={styles.modalTitle}>
-                      {selectedSign.name}
-                    </h2>
-                    <span style={styles.modalCategory}>
-                      {selectedSign.category} • {selectedSign.difficulty}
-                    </span>
-                  </div>
+        {activeModalSign && (
+          <div style={styles.modalBackdrop} onClick={closeSignModal}>
+            <div className="glass-card" style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+              {/* Modal Top Bar */}
+              <div style={styles.modalTop}>
+                <div style={styles.modalBadgeRow}>
+                  <span style={styles.modalCatBadge}>{activeModalSign.category}</span>
+                  <span style={styles.modalDiffBadge}>{activeModalSign.difficulty}</span>
                 </div>
 
-                <p style={styles.modalDesc}>
-                  {selectedSign.description}
-                </p>
-
-                <h4 style={styles.stepsTitle}>How to Perform</h4>
-                <ol style={styles.stepsList}>
-                  {selectedSign.steps.map((step, i) => (
-                    <li key={i} style={styles.stepItem}>
-                      <span style={styles.stepNumber}>{i + 1}</span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-
-                <div style={styles.tipBox}>
-                  <strong>💡 Tip:</strong> {selectedSign.tips}
-                </div>
-
-                <div style={styles.modalActions}>
+                <div style={styles.modalTopActions}>
                   <button
-                    onClick={() => setSelectedSign(null)}
-                    className="btn-secondary"
-                    style={{ flex: 1 }}
-                  >
-                    <ArrowLeft size={16} />
-                    Back to Signs
-                  </button>
-                  <button
-                    className="btn-primary"
-                    style={{ flex: 1 }}
-                    onClick={() => {
-                      setSelectedSign(null)
-                      // Could navigate to practice
+                    onClick={handleModalFavToggle}
+                    style={{
+                      ...styles.modalFavBtn,
+                      color: modalFaved ? 'var(--pink-primary)' : 'var(--text-muted)',
+                      borderColor: modalFaved ? 'var(--pink-border)' : 'var(--border-color)',
                     }}
+                    title={modalFaved ? 'Remove from Favourites' : 'Add to Favourites'}
                   >
-                    <Play size={16} />
-                    Practice This Sign
+                    <Heart size={16} fill={modalFaved ? 'currentColor' : 'none'} />
+                  </button>
+
+                  <button onClick={closeSignModal} style={styles.closeBtn}>
+                    <X size={20} />
                   </button>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </div>
+
+              {/* Modal Main Sign Visual & Animated Hand Gesture */}
+              <div style={styles.modalHero}>
+                <div style={styles.animViewerWrap}>
+                  <AnimatedHandSign signName={activeModalSign.name} size={320} showControls={true} />
+                </div>
+                <h2 style={styles.modalSignTitle}>{activeModalSign.name}</h2>
+                <p style={styles.modalMeaning}>
+                  {typeof activeModalSign.meaning === 'string'
+                    ? activeModalSign.meaning
+                    : activeModalSign.meaning?.[language] || activeModalSign.meaning?.en || ''}
+                </p>
+              </div>
+
+              {/* Step-by-Step Instructions */}
+              <div style={styles.stepsSection}>
+                <h4 style={styles.sectionHeading}>{t('learn_how_to_perform', 'How to Perform')}</h4>
+                <div style={styles.stepsList}>
+                  {(Array.isArray(activeModalSign.steps)
+                    ? activeModalSign.steps
+                    : activeModalSign.steps?.[language] || activeModalSign.steps?.en || []
+                  ).map((step, idx) => (
+                    <div key={idx} style={styles.stepItem}>
+                      <span style={styles.stepNumber}>{idx + 1}</span>
+                      <p style={styles.stepText}>{step}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pro Tips Banner */}
+              {activeModalSign.tips && (
+                <div style={styles.tipBox}>
+                  <Lightbulb size={18} color="#F59E0B" style={{ flexShrink: 0 }} />
+                  <p style={styles.tipText}>
+                    {typeof activeModalSign.tips === 'string'
+                      ? activeModalSign.tips
+                      : activeModalSign.tips?.[language] || activeModalSign.tips?.en || ''}
+                  </p>
+                </div>
+              )}
+
+              {/* Contextual Examples */}
+              {(activeModalSign.exampleSentence || activeModalSign.examples) && (
+                <div style={styles.exampleSection}>
+                  <h4 style={styles.sectionHeading}>Example Usage</h4>
+                  {(() => {
+                    const exObj = activeModalSign.exampleSentence || activeModalSign.examples
+                    const exText = typeof exObj === 'string' ? exObj : exObj?.[language] || exObj?.en || ''
+                    if (!exText) return null
+                    return (
+                      <div style={styles.exampleItem}>
+                        <p style={styles.exampleText}>"{exText}"</p>
+                        <button
+                          onClick={() => handleSpeak(exText)}
+                          className="btn-secondary"
+                          style={styles.speakExampleBtn}
+                          title="Speak example"
+                        >
+                          <Volume2 size={15} color="var(--pink-soft)" />
+                        </button>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
+              {/* Model Recognition Support Note */}
+              <div style={styles.supportNote}>
+                {activeModalSign.supportedByModel ? (
+                  <div style={styles.supportedAlert}>
+                    <CheckCircle2 size={16} color="#10B981" />
+                    <span>Real-time recognition supported with on-device camera.</span>
+                  </div>
+                ) : (
+                  <div style={styles.guideAlert}>
+                    <BookOpen size={16} color="var(--pink-soft)" />
+                    <span>Step-by-step visual lesson. Use for reference and practice.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Bottom Actions */}
+              <div style={styles.modalFooter}>
+                <button
+                  onClick={() => handlePracticeFromModal(activeModalSign)}
+                  className="btn-primary"
+                  style={styles.modalPracticeBtn}
+                >
+                  <Play size={16} fill="currentColor" />
+                  {t('learn_practice_sign', 'Practice This Sign in Arena')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   )
 }
 
 const styles = {
-  page: {
-    padding: '100px 24px 60px',
-    maxWidth: '1200px',
-    margin: '0 auto',
-  },
-  header: {
-    marginBottom: '32px',
-  },
-  title: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    fontSize: '1.8rem',
-    fontWeight: 800,
-    fontFamily: "'Space Grotesk', sans-serif",
-    marginBottom: '8px',
-  },
-  subtitle: {
-    fontSize: '0.95rem',
-    color: '#9CA3AF',
-    maxWidth: '500px',
-  },
-  controls: {
+  container: {
+    padding: '36px 24px 80px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
-    marginBottom: '32px',
+    gap: '26px',
+    maxWidth: '1200px',
+  },
+  header: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  title: {
+    fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)',
+    fontWeight: 900,
+    color: 'var(--text-primary)',
+  },
+  subtitle: {
+    fontSize: '0.92rem',
+    color: 'var(--text-secondary)',
+    maxWidth: '650px',
+  },
+  searchBarRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    flexWrap: 'wrap',
   },
   searchBox: {
+    flex: 1,
+    minWidth: '280px',
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '12px 20px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '12px',
-    maxWidth: '400px',
+    padding: '12px 18px',
+    background: 'rgba(22, 11, 23, 0.8)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '9999px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
   },
   searchInput: {
-    flex: 1,
-    background: 'transparent',
+    background: 'none',
     border: 'none',
-    outline: 'none',
-    color: '#fff',
-    fontSize: '0.95rem',
+    color: 'var(--text-primary)',
+    fontSize: '0.9rem',
+    width: '100%',
   },
-  filters: {
+  clearSearchBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+  },
+  diffTabs: {
     display: 'flex',
-    gap: '8px',
+    alignItems: 'center',
+    gap: '6px',
     flexWrap: 'wrap',
   },
-  filterBtn: {
-    padding: '8px 16px',
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    color: '#9CA3AF',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.08)',
+  diffTab: {
+    padding: '9px 16px',
     borderRadius: '9999px',
+    border: '1px solid',
+    fontSize: '0.78rem',
     cursor: 'pointer',
-    transition: 'all 0.3s',
+    transition: 'all 0.2s',
   },
-  filterBtnActive: {
-    color: '#fff',
-    background: 'rgba(108, 99, 255, 0.15)',
-    borderColor: 'rgba(108, 99, 255, 0.4)',
+  categoriesRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    overflowX: 'auto',
+    paddingBottom: '6px',
   },
-  grid: {
+  catPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 16px',
+    borderRadius: '9999px',
+    border: '1px solid',
+    fontSize: '0.8rem',
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  catCount: {
+    opacity: 0.7,
+    fontSize: '0.72rem',
+  },
+  cardsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-    gap: '16px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+    gap: '18px',
   },
-  signCard: {
-    padding: '24px',
-    cursor: 'pointer',
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  signEmoji: {
-    fontSize: '2.5rem',
-  },
-  signName: {
-    fontSize: '1.1rem',
-    fontWeight: 700,
-    fontFamily: "'Space Grotesk', sans-serif",
-  },
-  signMeta: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  signCategory: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
-    fontWeight: 500,
-  },
-  signDifficulty: {
-    fontSize: '0.7rem',
-    fontWeight: 600,
-  },
-  signArrow: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    color: '#6B7280',
-  },
-  noResults: {
-    gridColumn: '1 / -1',
+  emptyState: {
+    padding: '60px 24px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '12px',
-    padding: '60px 0',
-    color: '#6B7280',
+    textAlign: 'center',
+    gap: '14px',
   },
-  modalOverlay: {
+  modalBackdrop: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0,0,0,0.7)',
-    backdropFilter: 'blur(8px)',
+    background: 'rgba(5, 5, 5, 0.85)',
+    backdropFilter: 'blur(16px)',
+    zIndex: 2000,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2000,
-    padding: '24px',
+    padding: '20px',
   },
-  modal: {
-    background: '#111827',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '20px',
-    padding: '36px',
-    maxWidth: '520px',
+  modalCard: {
+    maxWidth: '540px',
     width: '100%',
-    maxHeight: '85vh',
+    maxHeight: '90vh',
     overflowY: 'auto',
-    position: 'relative',
+    padding: '30px',
+    borderRadius: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    background: 'linear-gradient(180deg, #1C0B18 0%, #0B080D 100%)',
+    border: '1.5px solid rgba(255, 46, 147, 0.35)',
+    boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(255, 46, 147, 0.2)',
   },
-  closeBtn: {
-    position: 'absolute',
-    top: '16px',
-    right: '16px',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '10px',
+  modalTop: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalBadgeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  modalCatBadge: {
+    padding: '4px 10px',
+    borderRadius: '9999px',
+    background: 'rgba(255, 46, 147, 0.15)',
+    border: '1px solid var(--pink-border)',
+    color: 'var(--pink-soft)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+  },
+  modalDiffBadge: {
+    padding: '4px 10px',
+    borderRadius: '9999px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid var(--border-color)',
+    color: 'var(--text-secondary)',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+  },
+  modalTopActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  modalFavBtn: {
     width: '36px',
     height: '36px',
+    borderRadius: '50%',
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#9CA3AF',
     cursor: 'pointer',
   },
-  modalHeader: {
+  closeBtn: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid var(--border-color)',
+    color: 'var(--text-primary)',
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    marginBottom: '20px',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  modalHero: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    gap: '12px',
+  },
+  animViewerWrap: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    margin: '4px 0',
+  },
+  modalVisualWrap: {
+    width: '110px',
+    height: '110px',
+    borderRadius: '24px',
+    background: 'radial-gradient(circle at 50% 50%, rgba(255, 46, 147, 0.2) 0%, rgba(20, 10, 22, 0.8) 80%)',
+    border: '1px solid rgba(255, 46, 147, 0.4)',
+    boxShadow: '0 0 25px rgba(255, 46, 147, 0.25)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '6px',
   },
   modalEmoji: {
-    fontSize: '3rem',
+    fontSize: '3.6rem',
   },
-  modalTitle: {
+  modalSignTitle: {
     fontSize: '1.6rem',
+    fontWeight: 900,
+    color: '#FFFFFF',
+  },
+  modalMeaning: {
+    fontSize: '0.9rem',
+    color: 'var(--text-secondary)',
+  },
+  stepsSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  sectionHeading: {
+    fontSize: '0.86rem',
     fontWeight: 800,
-    fontFamily: "'Space Grotesk', sans-serif",
-  },
-  modalCategory: {
-    fontSize: '0.8rem',
-    color: '#6B7280',
-  },
-  modalDesc: {
-    fontSize: '0.95rem',
-    color: '#9CA3AF',
-    lineHeight: 1.7,
-    marginBottom: '24px',
-  },
-  stepsTitle: {
-    fontSize: '1rem',
-    fontWeight: 700,
-    marginBottom: '12px',
+    letterSpacing: '0.04em',
+    color: 'var(--pink-soft)',
+    textTransform: 'uppercase',
   },
   stepsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    marginBottom: '20px',
+    gap: '8px',
   },
   stepItem: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '12px',
-    fontSize: '0.9rem',
-    color: '#D1D5DB',
-    lineHeight: 1.5,
+    padding: '10px 14px',
+    background: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
   },
   stepNumber: {
     width: '24px',
     height: '24px',
-    borderRadius: '8px',
-    background: 'rgba(108, 99, 255, 0.15)',
-    color: '#6C63FF',
+    borderRadius: '50%',
+    background: 'rgba(255, 46, 147, 0.2)',
+    color: 'var(--pink-soft)',
     fontSize: '0.75rem',
-    fontWeight: 700,
+    fontWeight: 800,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  tipBox: {
-    padding: '14px 16px',
-    background: 'rgba(245, 158, 11, 0.08)',
-    border: '1px solid rgba(245, 158, 11, 0.2)',
-    borderRadius: '10px',
-    fontSize: '0.85rem',
-    color: '#F59E0B',
+  stepText: {
+    fontSize: '0.84rem',
+    color: 'var(--text-primary)',
     lineHeight: 1.5,
-    marginBottom: '24px',
   },
-  modalActions: {
+  tipBox: {
     display: 'flex',
+    alignItems: 'center',
     gap: '12px',
+    padding: '12px 16px',
+    background: 'rgba(245, 158, 11, 0.1)',
+    border: '1px solid rgba(245, 158, 11, 0.25)',
+    borderRadius: '12px',
+  },
+  tipText: {
+    fontSize: '0.8rem',
+    color: '#FDE68A',
+    lineHeight: 1.4,
+  },
+  exampleSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  exampleItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    padding: '10px 16px',
+    background: 'rgba(255, 46, 147, 0.06)',
+    border: '1px solid rgba(255, 46, 147, 0.2)',
+    borderRadius: '12px',
+  },
+  exampleText: {
+    fontSize: '0.85rem',
+    color: 'var(--text-primary)',
+    fontStyle: 'italic',
+  },
+  speakExampleBtn: {
+    width: '32px',
+    height: '32px',
+    padding: 0,
+    borderRadius: '8px',
+    flexShrink: 0,
+  },
+  supportNote: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  supportedAlert: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '0.78rem',
+    color: '#10B981',
+  },
+  guideAlert: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '0.78rem',
+    color: 'var(--pink-soft)',
+  },
+  modalFooter: {
+    marginTop: '6px',
+  },
+  modalPracticeBtn: {
+    width: '100%',
+    padding: '14px',
+    fontSize: '0.9rem',
   },
 }

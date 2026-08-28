@@ -1,17 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera as CameraIcon,
   CameraOff,
-  Loader2,
-  AlertCircle,
-  Hand,
+  Pause,
+  Play,
   FlipHorizontal,
+  Hand,
+  AlertTriangle,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react'
 import { useHandTracking } from '../hooks/useHandTracking'
+import { useLanguage } from '../context/LanguageContext'
 
-export default function Camera({ onGestureDetected }) {
+export default function Camera({ onGestureDetected, targetSign = null }) {
+  const { t } = useLanguage()
   const [isCameraOn, setIsCameraOn] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [facingMode, setFacingMode] = useState('user')
   const [cameraError, setCameraError] = useState(null)
 
@@ -24,6 +30,9 @@ export default function Camera({ onGestureDetected }) {
     isLoading: mpLoading,
     error: mpError,
     gesture,
+    isHandDetected,
+    isLowConfidence,
+    handCount,
     startTracking,
     stopTracking,
   } = useHandTracking()
@@ -32,6 +41,7 @@ export default function Camera({ onGestureDetected }) {
   const startCamera = useCallback(async () => {
     try {
       setCameraError(null)
+      setIsPaused(false)
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -49,7 +59,6 @@ export default function Camera({ onGestureDetected }) {
         await videoRef.current.play()
         setIsCameraOn(true)
 
-        // Start hand tracking once video is playing
         if (isInitialized) {
           startTracking(videoRef.current, canvasRef.current)
         }
@@ -58,7 +67,7 @@ export default function Camera({ onGestureDetected }) {
       console.error('Camera error:', err)
       setCameraError(
         err.name === 'NotAllowedError'
-          ? 'Camera access denied. Please allow camera permissions.'
+          ? 'Camera access denied. Please allow camera permissions in your browser.'
           : err.name === 'NotFoundError'
           ? 'No camera found on this device.'
           : `Camera error: ${err.message}`
@@ -69,32 +78,51 @@ export default function Camera({ onGestureDetected }) {
   // ── Stop Camera ──
   const stopCamera = useCallback(() => {
     stopTracking()
-
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
-
     setIsCameraOn(false)
+    setIsPaused(false)
   }, [stopTracking])
 
-  // ── Start tracking when MediaPipe initializes (if camera already on) ──
+  // ── Pause / Resume ──
+  const togglePause = () => {
+    if (!videoRef.current) return
+    if (isPaused) {
+      videoRef.current.play()
+      startTracking(videoRef.current, canvasRef.current)
+      setIsPaused(false)
+    } else {
+      videoRef.current.pause()
+      stopTracking()
+      setIsPaused(true)
+    }
+  }
+
+  // ── Flip Camera ──
+  const flipCamera = () => {
+    stopCamera()
+    setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'))
+    setTimeout(() => startCamera(), 300)
+  }
+
+  // ── Start Tracking when MediaPipe loads ──
   useEffect(() => {
-    if (isInitialized && isCameraOn && videoRef.current) {
+    if (isInitialized && isCameraOn && !isPaused && videoRef.current) {
       startTracking(videoRef.current, canvasRef.current)
     }
-  }, [isInitialized, isCameraOn, startTracking])
+  }, [isInitialized, isCameraOn, isPaused, startTracking])
 
-  // ── Pass gesture to parent ──
+  // ── Pass detected gesture to parent ──
   useEffect(() => {
-    if (gesture && onGestureDetected) {
+    if (gesture && onGestureDetected && !isPaused) {
       onGestureDetected(gesture)
     }
-  }, [gesture, onGestureDetected])
+  }, [gesture, onGestureDetected, isPaused])
 
   // ── Cleanup on unmount ──
   useEffect(() => {
@@ -103,17 +131,12 @@ export default function Camera({ onGestureDetected }) {
     }
   }, [stopCamera])
 
-  // ── Flip camera ──
-  const flipCamera = () => {
-    stopCamera()
-    setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'))
-    setTimeout(() => startCamera(), 300)
-  }
+  const isTargetMatched = targetSign && gesture?.sign === targetSign.toUpperCase()
 
   return (
     <div style={styles.container}>
       {/* Camera Viewport */}
-      <div style={styles.viewport}>
+      <div style={{ ...styles.viewport, borderColor: isTargetMatched ? 'var(--pink-primary)' : 'var(--border-color)' }}>
         {/* Video Element */}
         <video
           ref={videoRef}
@@ -126,7 +149,7 @@ export default function Camera({ onGestureDetected }) {
           muted
         />
 
-        {/* Canvas Overlay for Landmarks */}
+        {/* Canvas Overlay for Landmark Skeleton */}
         <canvas
           ref={canvasRef}
           style={{
@@ -136,123 +159,122 @@ export default function Camera({ onGestureDetected }) {
           }}
         />
 
-        {/* Placeholder when camera is off */}
+        {/* Placeholder when Camera is off */}
         {!isCameraOn && !cameraError && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={styles.placeholder}
-          >
-            <Hand size={64} color="rgba(108,99,255,0.3)" />
+          <div style={styles.placeholder}>
+            <div style={styles.placeholderIcon}>
+              <Hand size={42} color="var(--pink-soft)" />
+            </div>
+            <h3 style={styles.placeholderTitle}>Camera is Inactive</h3>
             <p style={styles.placeholderText}>
-              Camera is off
+              Click "Start Camera" to enable real-time sign recognition with MediaPipe.
             </p>
-            <p style={styles.placeholderSubtext}>
-              Click "Start Camera" to begin sign language recognition
-            </p>
-          </motion.div>
+          </div>
         )}
 
-        {/* Camera / AI Error */}
+        {/* Camera Error Message */}
         {(cameraError || mpError) && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={styles.errorOverlay}
-          >
-            <AlertCircle size={48} color="#EF4444" />
-            <p style={styles.errorText}>{cameraError || `AI Model Error: ${mpError}`}</p>
-          </motion.div>
-        )}
-
-        {/* MediaPipe Loading */}
-        {mpLoading && (
-          <div style={styles.loadingBadge}>
-            <Loader2 size={14} className="spin" />
-            Loading AI Model...
+          <div style={styles.errorOverlay}>
+            <AlertTriangle size={36} color="#EF4444" />
+            <p style={styles.errorText}>{cameraError || `AI Engine Error: ${mpError}`}</p>
           </div>
         )}
 
-        {/* Live Indicator */}
+        {/* Live Tracking Badges */}
         {isCameraOn && (
-          <div style={styles.liveBadge}>
-            <div style={styles.liveDot} />
-            LIVE
+          <div style={styles.badgeRow}>
+            <div style={{ ...styles.liveBadge, borderColor: isPaused ? 'rgba(245,158,11,0.5)' : 'rgba(255,46,147,0.5)' }}>
+              <div style={{ ...styles.liveDot, background: isPaused ? '#F59E0B' : '#FF2E93', boxShadow: isPaused ? 'none' : '0 0 8px #FF2E93' }} />
+              {isPaused ? 'PAUSED' : 'LIVE ISL'}
+            </div>
+
+            {handCount > 0 && (
+              <div style={styles.handCountBadge}>
+                <Hand size={12} color="var(--pink-soft)" />
+                {handCount} {handCount === 1 ? 'Hand' : 'Hands'}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Gesture Overlay on Camera */}
-        {isCameraOn && gesture && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={styles.gestureOverlay}
-          >
-            <span style={styles.gestureOverlaySign}>
-              {gesture.sign}
-            </span>
-          </motion.div>
+        {/* Live Detected Sign Banner */}
+        <AnimatePresence>
+          {isCameraOn && gesture && !isPaused && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              style={{
+                ...styles.detectedBanner,
+                borderColor: isTargetMatched ? '#10B981' : 'var(--pink-primary)',
+                boxShadow: isTargetMatched ? '0 0 20px rgba(16, 185, 129, 0.4)' : '0 0 20px rgba(255, 46, 147, 0.3)',
+              }}
+            >
+              <div style={styles.detectedLeft}>
+                <span style={styles.detectedSign}>{gesture.sign}</span>
+                <span style={styles.detectedConfidence}>{Math.round(gesture.confidence * 100)}% Match</span>
+              </div>
+              {isTargetMatched && (
+                <div style={styles.matchBadge}>
+                  <CheckCircle2 size={16} color="#10B981" />
+                  <span>Target Match!</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Status Hint */}
+        {isCameraOn && !isHandDetected && !isPaused && (
+          <div style={styles.statusHint}>
+            <Hand size={14} color="var(--pink-soft)" />
+            <span>{t('trans_no_hand', 'Position hand inside camera frame')}</span>
+          </div>
+        )}
+
+        {isCameraOn && isHandDetected && isLowConfidence && !isPaused && (
+          <div style={{ ...styles.statusHint, background: 'rgba(245,158,11,0.9)', color: '#000' }}>
+            <AlertTriangle size={14} />
+            <span>{t('trans_low_confidence', 'Sign uncertain. Please hold steady.')}</span>
+          </div>
         )}
       </div>
 
-      {/* Controls */}
-      <div style={styles.controls}>
+      {/* Camera Controls */}
+      <div style={styles.controlsBar}>
         {!isCameraOn ? (
-          <button
-            onClick={startCamera}
-            disabled={mpLoading}
-            style={{
-              ...styles.startBtn,
-              opacity: mpLoading ? 0.5 : 1,
-            }}
-          >
+          <button onClick={startCamera} disabled={mpLoading} className="btn-primary" style={styles.startBtn}>
             <CameraIcon size={18} />
-            {mpLoading ? 'Loading AI...' : 'Start Camera'}
+            {mpLoading ? t('common_loading', 'Loading AI Engine...') : t('trans_start_camera', 'Start Camera')}
           </button>
         ) : (
           <div style={styles.activeControls}>
-            <button onClick={flipCamera} style={styles.iconBtn}>
-              <FlipHorizontal size={18} />
+            <button onClick={togglePause} className="btn-secondary" style={styles.ctrlBtn}>
+              {isPaused ? <Play size={16} /> : <Pause size={16} />}
+              {isPaused ? t('trans_resume_camera', 'Resume') : t('trans_pause_camera', 'Pause')}
             </button>
-            <button onClick={stopCamera} style={styles.stopBtn}>
-              <CameraOff size={18} />
-              Stop Camera
+
+            <button onClick={flipCamera} className="btn-secondary" style={styles.iconBtn} title="Flip Camera">
+              <FlipHorizontal size={17} />
+            </button>
+
+            <button
+              onClick={stopCamera}
+              className="btn-secondary"
+              style={{ ...styles.ctrlBtn, borderColor: 'rgba(239,68,68,0.35)', color: '#EF4444' }}
+            >
+              <CameraOff size={16} />
+              {t('trans_stop_camera', 'Stop')}
             </button>
           </div>
         )}
-
-        {/* Status */}
-        <div style={styles.status}>
-          <div
-            style={{
-              ...styles.statusDot,
-              background: isCameraOn
-                ? '#22C55E'
-                : mpLoading
-                ? '#F59E0B'
-                : '#6B7280',
-            }}
-          />
-          <span style={styles.statusText}>
-            {isCameraOn
-              ? 'Camera Active • AI Tracking'
-              : mpLoading
-              ? 'Initializing MediaPipe...'
-              : 'Camera Inactive'}
-          </span>
-        </div>
       </div>
 
-      {/* Spin animation for loader */}
-      <style>{`
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      {/* Privacy Guarantee */}
+      <div style={styles.privacyNote}>
+        <ShieldCheck size={15} color="var(--pink-soft)" />
+        <span>{t('dash_camera_privacy', 'Camera processing runs 100% locally in real time. Video is never recorded or stored.')}</span>
+      </div>
     </div>
   )
 }
@@ -261,32 +283,34 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '14px',
+    width: '100%',
   },
   viewport: {
     position: 'relative',
     width: '100%',
     aspectRatio: '16 / 9',
-    background: '#0a0e1a',
-    borderRadius: '16px',
+    background: '#070408',
+    borderRadius: '20px',
     overflow: 'hidden',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid var(--border-color)',
+    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 46, 147, 0.08)',
+    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
   },
   video: {
     position: 'absolute',
-    top: 0,
-    left: 0,
+    inset: 0,
     width: '100%',
     height: '100%',
     objectFit: 'cover',
   },
   canvas: {
     position: 'absolute',
-    top: 0,
-    left: 0,
+    inset: 0,
     width: '100%',
     height: '100%',
     zIndex: 2,
+    pointerEvents: 'none',
   },
   placeholder: {
     position: 'absolute',
@@ -295,19 +319,33 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '12px',
-    zIndex: 1,
+    padding: '24px',
+    textAlign: 'center',
+    background: 'radial-gradient(circle at 50% 40%, rgba(255, 46, 147, 0.08) 0%, rgba(7, 4, 8, 0.98) 80%)',
+  },
+  placeholderIcon: {
+    width: '68px',
+    height: '68px',
+    borderRadius: '18px',
+    background: 'rgba(255, 46, 147, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '14px',
+    border: '1px solid rgba(255, 46, 147, 0.3)',
+    boxShadow: '0 0 20px rgba(255, 46, 147, 0.2)',
+  },
+  placeholderTitle: {
+    fontSize: '1.15rem',
+    fontWeight: 800,
+    marginBottom: '6px',
+    color: 'var(--text-primary)',
   },
   placeholderText: {
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    color: '#9CA3AF',
-  },
-  placeholderSubtext: {
-    fontSize: '0.85rem',
-    color: '#6B7280',
-    textAlign: 'center',
-    maxWidth: '280px',
+    fontSize: '0.84rem',
+    color: 'var(--text-secondary)',
+    maxWidth: '320px',
+    lineHeight: 1.5,
   },
   errorOverlay: {
     position: 'absolute',
@@ -316,137 +354,152 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    background: 'rgba(7, 4, 8, 0.96)',
+    padding: '24px',
+    textAlign: 'center',
     gap: '12px',
-    zIndex: 3,
-    background: 'rgba(0,0,0,0.8)',
+    zIndex: 10,
   },
   errorText: {
-    fontSize: '0.9rem',
+    fontSize: '0.88rem',
     color: '#EF4444',
-    textAlign: 'center',
-    maxWidth: '300px',
+    maxWidth: '320px',
   },
-  loadingBadge: {
+  badgeRow: {
     position: 'absolute',
-    top: '12px',
-    left: '12px',
+    top: '14px',
+    left: '14px',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    background: 'rgba(245, 158, 11, 0.15)',
-    border: '1px solid rgba(245, 158, 11, 0.3)',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: 500,
-    color: '#F59E0B',
+    gap: '8px',
     zIndex: 5,
   },
   liveBadge: {
-    position: 'absolute',
-    top: '12px',
-    left: '12px',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '6px 12px',
-    background: 'rgba(239, 68, 68, 0.15)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
+    padding: '5px 12px',
     borderRadius: '9999px',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    color: '#EF4444',
-    zIndex: 5,
-    letterSpacing: '1px',
+    background: 'rgba(10, 6, 11, 0.85)',
+    border: '1px solid rgba(255, 46, 147, 0.4)',
+    color: '#FFFFFF',
+    fontSize: '0.68rem',
+    fontWeight: 800,
+    letterSpacing: '0.08em',
+    backdropFilter: 'blur(10px)',
   },
   liveDot: {
-    width: '8px',
-    height: '8px',
+    width: '7px',
+    height: '7px',
     borderRadius: '50%',
-    background: '#EF4444',
-    animation: 'pulse 1.5s ease-in-out infinite',
   },
-  gestureOverlay: {
+  handCountBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '5px 11px',
+    borderRadius: '9999px',
+    background: 'rgba(10, 6, 11, 0.85)',
+    border: '1px solid var(--border-color)',
+    color: 'var(--text-primary)',
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    backdropFilter: 'blur(10px)',
+  },
+  detectedBanner: {
     position: 'absolute',
     bottom: '16px',
     left: '50%',
     transform: 'translateX(-50%)',
-    padding: '8px 24px',
-    background: 'rgba(108, 99, 255, 0.9)',
-    borderRadius: '9999px',
     zIndex: 5,
-  },
-  gestureOverlaySign: {
-    fontSize: '1.2rem',
-    fontWeight: 700,
-    color: '#fff',
-    fontFamily: "'Space Grotesk', sans-serif",
-  },
-  controls: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '16px',
+    padding: '8px 22px',
+    background: 'rgba(16, 10, 18, 0.94)',
+    backdropFilter: 'blur(16px)',
+    border: '1.5px solid var(--pink-primary)',
+    borderRadius: '9999px',
+    minWidth: '220px',
+  },
+  detectedLeft: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '8px',
+  },
+  detectedSign: {
+    fontSize: '1.25rem',
+    fontWeight: 900,
+    fontFamily: "'Space Grotesk', sans-serif",
+    background: 'linear-gradient(135deg, #FFFFFF 0%, #FDA4AF 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  },
+  detectedConfidence: {
+    fontSize: '0.74rem',
+    fontWeight: 700,
+    color: 'var(--pink-soft)',
+  },
+  matchBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    fontSize: '0.74rem',
+    fontWeight: 700,
+    color: '#10B981',
+  },
+  statusHint: {
+    position: 'absolute',
+    bottom: '16px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 4,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+    padding: '6px 16px',
+    background: 'rgba(10, 6, 11, 0.88)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '9999px',
+    color: 'var(--text-secondary)',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+  },
+  controlsBar: {
+    display: 'flex',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   startBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '14px 32px',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
-    color: '#fff',
-    fontSize: '1rem',
-    fontWeight: 600,
-    borderRadius: '9999px',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all 0.3s',
+    padding: '12px 28px',
   },
   activeControls: {
     display: 'flex',
-    gap: '12px',
     alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  ctrlBtn: {
+    padding: '10px 18px',
+    fontSize: '0.85rem',
   },
   iconBtn: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '12px',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#9CA3AF',
+    width: '42px',
+    height: '42px',
+    padding: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all 0.3s',
   },
-  stopBtn: {
+  privacyNote: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '12px 24px',
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    color: '#EF4444',
-    fontSize: '0.9rem',
-    fontWeight: 600,
-    borderRadius: '9999px',
-    cursor: 'pointer',
-    transition: 'all 0.3s',
-  },
-  status: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  statusDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-  },
-  statusText: {
-    fontSize: '0.8rem',
-    color: '#6B7280',
-    fontWeight: 500,
+    justifyContent: 'center',
+    gap: '7px',
+    fontSize: '0.76rem',
+    color: 'var(--text-muted)',
+    textAlign: 'center',
   },
 }

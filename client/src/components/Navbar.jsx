@@ -3,84 +3,114 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Hand,
-  Home,
+  LayoutDashboard,
   Camera,
   BookOpen,
   Gamepad2,
+  PenLine,
+  Type,
   Clock,
-  Info,
+  BarChart3,
+  Globe,
+  Sun,
+  Moon,
+  Monitor,
   Menu,
   X,
-  LogIn
+  LogIn,
+  User,
+  Settings as SettingsIcon,
 } from 'lucide-react'
-
-const navLinks = [
-  { path: '/', label: 'Home', icon: Home },
-  { path: '/translator', label: 'Translator', icon: Camera },
-  { path: '/learn', label: 'Learn ISL', icon: BookOpen },
-  { path: '/practice', label: 'Practice', icon: Gamepad2 },
-  { path: '/history', label: 'History', icon: Clock },
-  { path: '/about', label: 'About', icon: Info },
-]
+import { useLanguage } from '../context/LanguageContext'
+import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [langDropdown, setLangDropdown] = useState(false)
   const location = useLocation()
+  const { language, setLanguage, t } = useLanguage()
+  const { theme, setTheme, textSize, setTextSize } = useTheme()
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
+      setIsScrolled(window.scrollY > 15)
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Close mobile menu on route change
   useEffect(() => {
-    setMobileOpen(false)
+    setMobileMenuOpen(false)
+    setLangDropdown(false)
   }, [location])
+
+  const navLinks = [
+    { to: '/dashboard', label: t('nav_dashboard', 'Dashboard'), icon: LayoutDashboard },
+    { to: '/translator', label: t('nav_translator', 'Translator'), icon: Camera },
+    { to: '/practice', label: t('nav_practice', 'Practice'), icon: Gamepad2 },
+    { to: '/learn', label: t('nav_learn', 'Learn'), icon: BookOpen },
+    { to: '/sentence-builder', label: t('nav_sentence_builder', 'Sentences'), icon: PenLine },
+    { to: '/text-to-sign', label: t('nav_text_to_sign', 'Text→Sign'), icon: Type },
+    { to: '/history', label: t('nav_history', 'History'), icon: Clock },
+    { to: '/progress', label: t('nav_progress', 'Progress'), icon: BarChart3 },
+  ]
+
+  const nextTextSize = () => {
+    if (textSize === 'normal') setTextSize('large')
+    else if (textSize === 'large') setTextSize('xlarge')
+    else setTextSize('normal')
+  }
+
+  const toggleTheme = () => {
+    if (theme === 'dark') setTheme('light')
+    else if (theme === 'light') setTheme('system')
+    else setTheme('dark')
+  }
 
   return (
     <>
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+      <nav
         style={{
           ...styles.nav,
           ...(isScrolled ? styles.navScrolled : {}),
         }}
       >
-        <div style={styles.container}>
+        <div className="container" style={styles.container}>
           {/* Logo */}
-          <Link to="/" style={styles.logo}>
+          <Link to="/dashboard" style={styles.logo} title="SIGNOVA — Bridging Silence, Building Understanding">
             <div style={styles.logoIcon}>
-              <Hand size={24} color="#fff" />
+              <Hand size={20} color="#FFFFFF" />
             </div>
-            <span style={styles.logoText}>SIGNOVA</span>
+            <div style={styles.brandTextWrap}>
+              <span style={styles.logoText}>SIGNOVA</span>
+              <span style={styles.logoTagline} className="desktop-only">ISL AI</span>
+            </div>
           </Link>
 
-          {/* Desktop Links */}
+          {/* Desktop Nav Links */}
           <div className="desktop-only" style={styles.desktopLinks}>
             {navLinks.map((link) => {
-              const isActive = location.pathname === link.path
+              const isActive =
+                location.pathname === link.to || (link.to === '/dashboard' && location.pathname === '/')
               return (
                 <Link
-                  key={link.path}
-                  to={link.path}
+                  key={link.to}
+                  to={link.to}
                   style={{
                     ...styles.navLink,
                     ...(isActive ? styles.navLinkActive : {}),
                   }}
                 >
-                  <link.icon size={16} />
-                  {link.label}
+                  <link.icon size={15} style={{ color: isActive ? 'var(--pink-soft)' : 'inherit' }} />
+                  <span>{link.label}</span>
                   {isActive && (
                     <motion.div
-                      layoutId="activeTab"
-                      style={styles.activeIndicator}
-                      transition={{ duration: 0.3 }}
+                      layoutId="activeNavPill"
+                      style={styles.activePill}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
                 </Link>
@@ -88,54 +118,119 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Login Button */}
-          <Link to="/login" className="desktop-only" style={styles.loginBtn}>
-            <LogIn size={16} />
-            Login
-          </Link>
+          {/* Right Controls: Language, Theme, Text Scaling, User */}
+          <div style={styles.rightControls}>
+            {/* Language Selector */}
+            <div style={styles.dropdownWrap}>
+              <button
+                onClick={() => setLangDropdown(!langDropdown)}
+                style={styles.toolBtn}
+                title="Change language"
+                aria-label="Language selector"
+              >
+                <Globe size={15} color="var(--pink-soft)" />
+                <span style={styles.langLabel}>
+                  {language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिन्दी' : 'EN'}
+                </span>
+              </button>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="mobile-only"
-            style={styles.menuBtn}
-            aria-label="Toggle navigation menu"
-          >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+              {langDropdown && (
+                <div style={styles.dropdownMenu}>
+                  <button
+                    onClick={() => {
+                      setLanguage('en')
+                      setLangDropdown(false)
+                    }}
+                    style={{ ...styles.dropdownItem, color: language === 'en' ? 'var(--pink-primary)' : 'inherit', fontWeight: language === 'en' ? 700 : 500 }}
+                  >
+                    🇬🇧 English
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLanguage('ta')
+                      setLangDropdown(false)
+                    }}
+                    style={{ ...styles.dropdownItem, color: language === 'ta' ? 'var(--pink-primary)' : 'inherit', fontWeight: language === 'ta' ? 700 : 500 }}
+                  >
+                    🇮🇳 தமிழ் (Tamil)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLanguage('hi')
+                      setLangDropdown(false)
+                    }}
+                    style={{ ...styles.dropdownItem, color: language === 'hi' ? 'var(--pink-primary)' : 'inherit', fontWeight: language === 'hi' ? 700 : 500 }}
+                  >
+                    🇮🇳 हिन्दी (Hindi)
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Text Size Scaler */}
+            <button onClick={nextTextSize} style={styles.toolBtn} title={`Text scaling: ${textSize}`} aria-label="Text scaling">
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--pink-soft)' }}>
+                {textSize === 'xlarge' ? 'A++' : textSize === 'large' ? 'A+' : 'A'}
+              </span>
+            </button>
+
+            {/* Theme Toggle */}
+            <button onClick={toggleTheme} style={styles.toolBtn} title={`Theme: ${theme}`} aria-label="Toggle theme">
+              {theme === 'light' ? <Sun size={15} color="var(--pink-soft)" /> : theme === 'dark' ? <Moon size={15} color="var(--pink-soft)" /> : <Monitor size={15} color="var(--pink-soft)" />}
+            </button>
+
+            {/* User Profile / Login */}
+            {isAuthenticated ? (
+              <Link to="/profile" style={styles.userBadge} title="Your profile">
+                <User size={15} color="var(--pink-soft)" />
+                <span className="desktop-only">{user?.name?.split(' ')[0] || t('nav_profile', 'Profile')}</span>
+              </Link>
+            ) : (
+              <Link to="/login" className="btn-primary" style={styles.loginBtn}>
+                <LogIn size={15} />
+                <span className="desktop-only">{t('nav_login', 'Login')}</span>
+              </Link>
+            )}
+
+            {/* Mobile Hamburger Menu */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="mobile-only"
+              style={styles.menuBtn}
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X size={22} color="var(--pink-primary)" /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
-      </motion.nav>
+      </nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile Drawer Menu */}
       <AnimatePresence>
-        {mobileOpen && (
+        {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            style={styles.mobileMenu}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            style={styles.mobileDrawer}
           >
-            {navLinks.map((link) => {
-              const isActive = location.pathname === link.path
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  style={{
-                    ...styles.mobileLink,
-                    ...(isActive ? styles.mobileLinkActive : {}),
-                  }}
-                >
-                  <link.icon size={20} />
-                  {link.label}
+            <div style={styles.drawerLinks}>
+              {navLinks.map((link) => (
+                <Link key={link.to} to={link.to} style={styles.drawerItem}>
+                  <link.icon size={18} color="var(--pink-soft)" />
+                  <span>{link.label}</span>
                 </Link>
-              )
-            })}
-            <Link to="/login" style={styles.mobileLogin}>
-              <LogIn size={20} />
-              Login
-            </Link>
+              ))}
+              <Link to="/settings" style={styles.drawerItem}>
+                <SettingsIcon size={18} color="var(--pink-soft)" />
+                <span>{t('nav_settings', 'Settings')}</span>
+              </Link>
+              <Link to="/about" style={styles.drawerItem}>
+                <Hand size={18} color="var(--pink-soft)" />
+                <span>{t('nav_about', 'About SIGNOVA')}</span>
+              </Link>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -149,143 +244,205 @@ const styles = {
     top: 0,
     left: 0,
     right: 0,
-    height: '70px',
+    height: '72px',
     zIndex: 1000,
-    transition: 'all 0.3s ease',
-    borderBottom: '1px solid transparent',
+    transition: 'all 0.25s ease',
+    borderBottom: '1px solid var(--border-color)',
+    background: 'rgba(5, 5, 5, 0.82)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
   },
   navScrolled: {
-    background: 'rgba(11, 16, 32, 0.9)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(10, 6, 11, 0.95)',
+    borderBottom: '1px solid rgba(255, 46, 147, 0.22)',
+    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)',
   },
   container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 24px',
-    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    height: '100%',
+    gap: '16px',
   },
   logo: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
     textDecoration: 'none',
+    flexShrink: 0,
   },
   logoIcon: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: 'linear-gradient(135deg, #FF2E93 0%, #C026D3 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: '0 0 16px rgba(255, 46, 147, 0.4)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+  },
+  brandTextWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    lineHeight: 1.1,
   },
   logoText: {
-    fontSize: '1.4rem',
-    fontWeight: 800,
+    fontSize: '1.25rem',
+    fontWeight: 900,
     fontFamily: "'Space Grotesk', sans-serif",
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
+    background: 'linear-gradient(135deg, #FFFFFF 0%, #FDA4AF 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
-    letterSpacing: '1px',
+    letterSpacing: '-0.02em',
+  },
+  logoTagline: {
+    fontSize: '0.62rem',
+    fontWeight: 800,
+    color: 'var(--pink-primary)',
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
   },
   desktopLinks: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '3px',
   },
   navLink: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '8px 14px',
-    fontSize: '0.85rem',
+    padding: '8px 13px',
+    fontSize: '0.84rem',
     fontWeight: 500,
-    color: '#9CA3AF',
+    color: 'var(--text-secondary)',
     borderRadius: '9999px',
-    transition: 'all 0.3s ease',
     textDecoration: 'none',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    zIndex: 1,
   },
   navLinkActive: {
     color: '#FFFFFF',
-    background: 'rgba(108, 99, 255, 0.15)',
+    fontWeight: 700,
   },
-  activeIndicator: {
+  activePill: {
     position: 'absolute',
-    bottom: '-2px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '20px',
-    height: '3px',
+    inset: 0,
+    background: 'linear-gradient(135deg, rgba(255, 46, 147, 0.2) 0%, rgba(28, 11, 24, 0.8) 100%)',
+    border: '1px solid rgba(255, 46, 147, 0.4)',
     borderRadius: '9999px',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
+    boxShadow: '0 0 16px rgba(255, 46, 147, 0.15)',
+    zIndex: -1,
   },
-  loginBtn: {
+  rightControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+  },
+  dropdownWrap: {
+    position: 'relative',
+  },
+  toolBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '7px 11px',
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '10px',
+    color: 'var(--text-primary)',
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  langLabel: {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    right: 0,
+    background: '#120914',
+    border: '1px solid var(--pink-border)',
+    borderRadius: '12px',
+    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 46, 147, 0.15)',
+    padding: '6px',
+    minWidth: '160px',
+    zIndex: 100,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+  },
+  dropdownItem: {
+    padding: '8px 12px',
+    fontSize: '0.82rem',
+    color: 'var(--text-primary)',
+    background: 'none',
+    border: 'none',
+    borderRadius: '8px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+  },
+  userBadge: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '8px 20px',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    color: '#fff',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
+    padding: '7px 14px',
+    background: 'rgba(255, 46, 147, 0.12)',
+    border: '1px solid var(--pink-border)',
     borderRadius: '9999px',
+    color: 'var(--text-primary)',
+    fontSize: '0.82rem',
+    fontWeight: 700,
     textDecoration: 'none',
-    transition: 'all 0.3s ease',
+    boxShadow: '0 0 12px rgba(255, 46, 147, 0.15)',
+  },
+  loginBtn: {
+    padding: '8px 18px',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    gap: '6px',
   },
   menuBtn: {
-    display: 'none',
     background: 'none',
     border: 'none',
-    color: '#fff',
+    color: 'var(--text-primary)',
     cursor: 'pointer',
+    padding: '6px',
+    display: 'flex',
+    alignItems: 'center',
   },
-  mobileMenu: {
+  mobileDrawer: {
     position: 'fixed',
-    top: '70px',
+    top: '72px',
     left: 0,
     right: 0,
-    background: 'rgba(11, 16, 32, 0.98)',
-    backdropFilter: 'blur(20px)',
-    padding: '20px',
+    background: 'rgba(10, 6, 11, 0.98)',
+    borderBottom: '1px solid var(--pink-border)',
     zIndex: 999,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    padding: '18px 16px',
+    backdropFilter: 'blur(24px)',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.8)',
   },
-  mobileLink: {
+  drawerLinks: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '10px',
+  },
+  drawerItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '14px 20px',
-    fontSize: '1rem',
-    fontWeight: 500,
-    color: '#9CA3AF',
+    gap: '10px',
+    padding: '12px 14px',
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid var(--border-color)',
     borderRadius: '12px',
+    color: 'var(--text-primary)',
     textDecoration: 'none',
-    transition: 'all 0.3s ease',
-  },
-  mobileLinkActive: {
-    color: '#fff',
-    background: 'rgba(108, 99, 255, 0.15)',
-  },
-  mobileLogin: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '14px 20px',
-    fontSize: '1rem',
+    fontSize: '0.85rem',
     fontWeight: 600,
-    color: '#fff',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
-    borderRadius: '12px',
-    textDecoration: 'none',
-    marginTop: '8px',
   },
 }

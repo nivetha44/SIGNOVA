@@ -1,287 +1,220 @@
-import { motion } from 'framer-motion'
-import {
-  Info,
-  Shield,
-  Heart,
-  Eye,
-  Cpu,
-  Database,
-} from 'lucide-react'
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { duration: 0.6 },
-}
+import { ShieldCheck, Cpu, Heart, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function About() {
   return (
-    <div className="page-wrapper">
-      <div className="container" style={styles.page}>
-
+    <main className="page-wrapper">
+      <div className="container" style={styles.container}>
         {/* Header */}
-        <motion.div {...fadeInUp} style={styles.header}>
-          <h1 style={styles.title}>
-            <Info size={28} color="#6C63FF" />
-            About <span className="gradient-text">SIGNOVA</span>
-          </h1>
+        <div style={styles.header}>
+          <p className="eyebrow">ABOUT SIGNOVA</p>
+          <h1 style={styles.title}>AI-Powered Indian Sign Language Platform</h1>
           <p style={styles.subtitle}>
-            An AI-powered accessibility platform for Indian Sign Language
+            Bridging silence and building understanding with real-time, on-device AI gesture recognition.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Mission */}
-        <motion.div {...fadeInUp} className="glass-card" style={styles.missionCard}>
-          <h2 style={styles.sectionTitle}>Our Mission</h2>
-          <p style={styles.missionText}>
-            Over 5 million people in India use Indian Sign Language (ISL) as their
-            primary mode of communication. Yet, the gap between the deaf community
-            and hearing individuals remains significant. SIGNOVA bridges this gap
-            by providing real-time, AI-powered sign language translation that works
-            directly in your browser — no downloads, no expensive hardware, no barriers.
+        {/* Mission Card */}
+        <section className="glass-card" style={styles.card}>
+          <div style={styles.iconWrap}>
+            <Heart size={26} color="#FF2E93" />
+          </div>
+          <h2 style={styles.cardTitle}>Our Mission</h2>
+          <p style={styles.cardText}>
+            Indian Sign Language (ISL) is used by millions of individuals across India. SIGNOVA was built to make ISL learning, real-time sign recognition, and bidirectional communication accessible to everyone — directly inside the browser with zero software installations required.
           </p>
-        </motion.div>
+        </section>
 
-        {/* How It Works (Technical) */}
-        <motion.div {...fadeInUp} style={styles.section}>
-          <h2 style={styles.sectionTitle}>
-            How It Works <span className="gradient-text">Technically</span>
-          </h2>
-          <div style={styles.techGrid}>
-            {[
-              {
-                icon: Eye,
-                title: 'Computer Vision',
-                desc: 'MediaPipe Hand Landmarker detects 21 hand keypoints in real-time at ~30fps using your webcam.',
-              },
-              {
-                icon: Cpu,
-                title: 'ML Classification',
-                desc: 'Extracted landmarks are normalized and fed into a trained classifier (SVM/Random Forest/MLP) to predict the sign.',
-              },
-              {
-                icon: Database,
-                title: 'MERN Stack',
-                desc: 'MongoDB stores user data and translations. Express/Node handles APIs. React provides the interactive UI.',
-              },
-              {
-                icon: Shield,
-                title: 'Privacy First',
-                desc: 'All video processing happens locally in your browser. No frames are sent to any server.',
-              },
-            ].map((item, i) => (
-              <div key={i} className="glass-card" style={styles.techCard}>
-                <div style={styles.techIcon}>
-                  <item.icon size={24} color="#6C63FF" />
-                </div>
-                <h3 style={styles.techTitle}>{item.title}</h3>
-                <p style={styles.techDesc}>{item.desc}</p>
-              </div>
-            ))}
+        {/* Architecture & AI Pipeline */}
+        <section className="glass-card" style={styles.card}>
+          <div style={styles.iconWrap}>
+            <Cpu size={26} color="#C026D3" />
           </div>
-        </motion.div>
-
-        {/* Tech Stack */}
-        <motion.div {...fadeInUp} style={styles.section}>
-          <h2 style={styles.sectionTitle}>Tech Stack</h2>
-          <div style={styles.stackGrid}>
-            {[
-              { name: 'React + Vite', role: 'Frontend Framework', color: '#61DAFB' },
-              { name: 'Node.js', role: 'Runtime Environment', color: '#68A063' },
-              { name: 'Express', role: 'API Server', color: '#fff' },
-              { name: 'MongoDB', role: 'Database', color: '#47A248' },
-              { name: 'MediaPipe', role: 'Hand Tracking', color: '#FF6F00' },
-              { name: 'Scikit-learn', role: 'ML Models', color: '#F7931E' },
-              { name: 'JWT', role: 'Authentication', color: '#D63AFF' },
-              { name: 'Framer Motion', role: 'Animations', color: '#FF6B6B' },
-            ].map((tech, i) => (
-              <div key={i} style={styles.stackChip}>
-                <div
-                  style={{
-                    ...styles.stackDot,
-                    background: tech.color,
-                  }}
-                />
-                <div>
-                  <span style={styles.stackName}>{tech.name}</span>
-                  <span style={styles.stackRole}>{tech.role}</span>
-                </div>
-              </div>
-            ))}
+          <h2 style={styles.cardTitle}>Technical Architecture</h2>
+          <div style={styles.pipelineGrid}>
+            <div style={styles.pipelineStep}>
+              <span style={styles.stepNum}>01</span>
+              <h4>Camera Stream</h4>
+              <p>Captures video feed on-device via WebRTC media APIs with zero recording.</p>
+            </div>
+            <div style={styles.pipelineStep}>
+              <span style={styles.stepNum}>02</span>
+              <h4>MediaPipe Vision</h4>
+              <p>Extracts 21 3D hand landmarks per hand at up to 60 FPS using GPU-accelerated WASM.</p>
+            </div>
+            <div style={styles.pipelineStep}>
+              <span style={styles.stepNum}>03</span>
+              <h4>ISL Gesture Classifier</h4>
+              <p>Calculates joint angles, finger extensions, and relative positions with temporal smoothing.</p>
+            </div>
+            <div style={styles.pipelineStep}>
+              <span style={styles.stepNum}>04</span>
+              <h4>Grammar Smoothing</h4>
+              <p>Converts raw ISL token sequences into natural grammatical sentences in EN, TA, and HI.</p>
+            </div>
           </div>
-        </motion.div>
+        </section>
 
-        {/* Limitations (Honest — interviewers love this) */}
-        <motion.div {...fadeInUp} className="glass-card" style={styles.limitCard}>
-          <h2 style={styles.sectionTitle}>Current Limitations</h2>
-          <ul style={styles.limitList}>
-            <li>
-              <strong>Isolated signs only:</strong> The current version recognizes
-              individual signs, not continuous sentence-level ISL which requires
-              temporal modeling and contextual language understanding.
+        {/* Reality Check & Limitations */}
+        <section className="glass-card" style={{ ...styles.card, borderColor: 'rgba(245, 158, 11, 0.3)' }}>
+          <div style={styles.iconWrap}>
+            <ShieldCheck size={26} color="#F59E0B" />
+          </div>
+          <h2 style={styles.cardTitle}>Model Capabilities & Honest Limitations</h2>
+          <p style={styles.cardText}>
+            We believe in complete transparency about current machine learning capabilities:
+          </p>
+          <ul style={styles.limitsList}>
+            <li style={styles.limitItem}>
+              <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <span><strong>Live AI Recognition:</strong> Currently supports reliable single and two-hand recognition for 14 core ISL signs (HELLO, THANK YOU, YES, NO, PLEASE, SORRY, HELP, GOOD, LOVE, WATER, FOOD, WELCOME, YOU, I).</span>
             </li>
-            <li>
-              <strong>Lighting sensitivity:</strong> Accuracy decreases in poor
-              lighting conditions or complex backgrounds.
+            <li style={styles.limitItem}>
+              <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <span><strong>Extended Learning Catalog:</strong> Signs beyond the model's live recognition are supported through structured step-by-step visual lessons and guides.</span>
             </li>
-            <li>
-              <strong>Limited vocabulary:</strong> Currently supports 15 signs.
-              Real ISL has thousands of signs including regional variations.
-            </li>
-            <li>
-              <strong>Single-hand focus:</strong> Many ISL signs require two hands
-              with specific spatial relationships. This is a future improvement.
+            <li style={styles.limitItem}>
+              <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <span><strong>Privacy Guarantee:</strong> Camera video is strictly processed in temporary GPU memory in real-time. Video is never persisted or transmitted to cloud servers.</span>
             </li>
           </ul>
-        </motion.div>
+        </section>
 
-        {/* Footer CTA */}
-        <motion.div {...fadeInUp} style={styles.footerCta}>
-          <p style={styles.footerText}>
-            Built with <Heart size={14} color="#EF4444" fill="#EF4444" /> for
-            accessibility and inclusion.
-          </p>
-          <p style={styles.footerSubtext}>
-            SIGNOVA © 2025 • Open Source • MERN + MediaPipe + ML
-          </p>
-        </motion.div>
+        {/* Call to Action */}
+        <div style={styles.ctaCard}>
+          <h2 style={styles.ctaTitle}>Ready to Start Your ISL Journey?</h2>
+          <p style={styles.ctaText}>Practice signs, test your accuracy, and learn Indian Sign Language today.</p>
+          <div style={styles.ctaBtnRow}>
+            <Link to="/translator" className="btn-primary" style={styles.ctaBtn}>
+              Open Live Translator <ArrowRight size={16} />
+            </Link>
+            <Link to="/learn" className="btn-secondary" style={styles.ctaBtn}>
+              Browse Sign Lessons
+            </Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
   )
 }
 
 const styles = {
-  page: {
-    padding: '100px 24px 60px',
+  container: {
+    padding: '36px 24px 80px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '28px',
     maxWidth: '900px',
-    margin: '0 auto',
   },
   header: {
-    marginBottom: '40px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
   },
   title: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    fontSize: '1.8rem',
-    fontWeight: 800,
-    fontFamily: "'Space Grotesk', sans-serif",
-    marginBottom: '8px',
+    fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)',
+    fontWeight: 900,
+    color: 'var(--text-primary)',
   },
   subtitle: {
-    fontSize: '0.95rem',
-    color: '#9CA3AF',
+    fontSize: '0.92rem',
+    color: 'var(--text-secondary)',
+    maxWidth: '650px',
   },
-  sectionTitle: {
-    fontSize: '1.3rem',
-    fontWeight: 700,
-    fontFamily: "'Space Grotesk', sans-serif",
-    marginBottom: '16px',
+  card: {
+    padding: '28px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    borderRadius: '20px',
+    background: 'linear-gradient(180deg, rgba(28, 11, 24, 0.65) 0%, rgba(11, 8, 13, 0.9) 100%)',
   },
-  missionCard: {
-    padding: '32px',
-    marginBottom: '48px',
-  },
-  missionText: {
-    fontSize: '1rem',
-    color: '#D1D5DB',
-    lineHeight: 1.8,
-  },
-  section: {
-    marginBottom: '48px',
-  },
-  techGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '16px',
-  },
-  techCard: {
-    padding: '24px',
-  },
-  techIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '12px',
-    background: 'rgba(108, 99, 255, 0.1)',
+  iconWrap: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '14px',
+    background: 'rgba(255, 46, 147, 0.12)',
+    border: '1px solid rgba(255, 46, 147, 0.3)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: '12px',
+    marginBottom: '2px',
   },
-  techTitle: {
-    fontSize: '1rem',
-    fontWeight: 700,
-    marginBottom: '6px',
+  cardTitle: {
+    fontSize: '1.25rem',
+    fontWeight: 800,
+    color: '#FFFFFF',
   },
-  techDesc: {
-    fontSize: '0.85rem',
-    color: '#9CA3AF',
+  cardText: {
+    fontSize: '0.88rem',
+    color: 'var(--text-secondary)',
     lineHeight: 1.6,
   },
-  stackGrid: {
+  pipelineGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '10px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '14px',
+    marginTop: '6px',
   },
-  stackChip: {
+  pipelineStep: {
+    padding: '16px',
+    background: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '14px',
+    border: '1px solid var(--border-color)',
     display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '12px 16px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '10px',
+    flexDirection: 'column',
+    gap: '6px',
   },
-  stackDot: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-    flexShrink: 0,
+  stepNum: {
+    fontSize: '0.74rem',
+    fontWeight: 800,
+    color: 'var(--pink-soft)',
   },
-  stackName: {
-    display: 'block',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-  },
-  stackRole: {
-    display: 'block',
-    fontSize: '0.7rem',
-    color: '#6B7280',
-  },
-  limitCard: {
-    padding: '32px',
-    marginBottom: '48px',
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  limitList: {
+  limitsList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
-    listStyle: 'none',
+    marginTop: '4px',
   },
-  limitListLi: {
-    fontSize: '0.9rem',
-    color: '#D1D5DB',
-    lineHeight: 1.6,
-    paddingLeft: '16px',
-    borderLeft: '2px solid rgba(245, 158, 11, 0.3)',
+  limitItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    fontSize: '0.86rem',
+    color: 'var(--text-secondary)',
+    lineHeight: 1.5,
   },
-  footerCta: {
+  ctaCard: {
+    padding: '38px 28px',
+    background: 'linear-gradient(135deg, rgba(255, 46, 147, 0.18) 0%, rgba(20, 10, 22, 0.95) 100%)',
+    borderRadius: '24px',
+    border: '1px solid rgba(255, 46, 147, 0.3)',
+    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 46, 147, 0.15)',
     textAlign: 'center',
-    padding: '40px 0',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '12px',
   },
-  footerText: {
+  ctaTitle: {
+    fontSize: '1.4rem',
+    fontWeight: 900,
+    color: '#FFFFFF',
+  },
+  ctaText: {
+    fontSize: '0.88rem',
+    color: 'var(--text-secondary)',
+  },
+  ctaBtnRow: {
     display: 'flex',
     alignItems: 'center',
+    gap: '12px',
+    marginTop: '10px',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: '6px',
-    fontSize: '0.95rem',
-    color: '#9CA3AF',
-    marginBottom: '8px',
   },
-  footerSubtext: {
-    fontSize: '0.8rem',
-    color: '#4B5563',
+  ctaBtn: {
+    padding: '12px 24px',
+    fontSize: '0.88rem',
   },
 }

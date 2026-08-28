@@ -6,7 +6,9 @@ const connectDB = async () => {
       console.warn('⚠️ MONGO_URI is not defined in .env')
       return
     }
-    const conn = await mongoose.connect(process.env.MONGO_URI)
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 2000,
+    })
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`)
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`)

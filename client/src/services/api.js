@@ -23,6 +23,7 @@ export const getMe = () => API.get('/auth/me')
 
 // ── Translations ──
 export const saveTranslation = (data) => API.post('/translations', data)
+export const createTranslation = saveTranslation
 export const getTranslations = (page = 1) =>
   API.get(`/translations?page=${page}`)
 export const deleteTranslation = (id) => API.delete(`/translations/${id}`)

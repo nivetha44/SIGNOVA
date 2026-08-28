@@ -1,335 +1,349 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
   Hand,
   Mail,
   Lock,
   User,
-  Eye,
-  EyeOff,
   ArrowRight,
-  Loader2,
+  AlertCircle,
+  Sparkles,
 } from 'lucide-react'
-import { registerUser, loginUser } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
-  const [isRegister, setIsRegister] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-
+  const { login, register } = useAuth()
   const navigate = useNavigate()
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-    setError('')
-    setSuccess('')
-  }
+  const [isRegister, setIsRegister] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
-    setError('')
-    setSuccess('')
+    setError(null)
+
+    if (isRegister) {
+      if (!name.trim()) {
+        setError('Please enter your full name.')
+        return
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters.')
+        return
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.')
+        return
+      }
+    }
 
     try {
-      let response
-
+      setLoading(true)
       if (isRegister) {
-        response = await registerUser(formData)
-        setSuccess('Account created! Logging you in...')
+        await register({ name, email, password })
       } else {
-        response = await loginUser({
-          email: formData.email,
-          password: formData.password,
-        })
+        await login({ email, password })
       }
-
-      // Save token and user
-      const { token, user } = response.data.data
-      localStorage.setItem('signova_token', token)
-      localStorage.setItem('signova_user', JSON.stringify(user))
-
-      setTimeout(() => navigate('/translator'), 500)
+      navigate('/dashboard')
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Something went wrong. Try again.'
+        err.response?.data?.message ||
+          'Authentication failed. Ensure the server is running or continue as a guest.'
       )
     } finally {
       setLoading(false)
     }
   }
 
+  const handleGuestContinue = () => {
+    navigate('/dashboard')
+  }
+
   return (
-    <div className="page-wrapper">
-      <div style={styles.container}>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="glass-card"
-          style={styles.card}
-        >
-          {/* Logo */}
-          <div style={styles.logoSection}>
+    <main className="page-wrapper">
+      <div className="container" style={styles.container}>
+        <div className="glass-card" style={styles.authCard}>
+          {/* Logo & Header */}
+          <div style={styles.header}>
             <div style={styles.logoIcon}>
-              <Hand size={28} color="#fff" />
+              <Hand size={24} color="#FFFFFF" />
             </div>
-            <h1 style={styles.logoText}>SIGNOVA</h1>
-            <p style={styles.logoSubtext}>
+            <h1 style={styles.title}>{isRegister ? 'Join SIGNOVA' : 'Welcome Back'}</h1>
+            <p style={styles.subtitle}>
               {isRegister
-                ? 'Create your account to get started'
-                : 'Welcome back! Sign in to continue'}
+                ? 'Create your learner profile to track XP, streaks, and achievements.'
+                : 'Sign in to access your translation history and cloud progress.'}
             </p>
           </div>
 
-          {/* Error / Success */}
-          {error && <div style={styles.errorBox}>{error}</div>}
-          {success && <div style={styles.successBox}>{success}</div>}
+          {/* Mode Switcher Tabs */}
+          <div style={styles.tabsRow}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegister(false)
+                setError(null)
+              }}
+              style={{
+                ...styles.tabBtn,
+                background: !isRegister ? 'var(--pink-primary)' : 'transparent',
+                color: !isRegister ? '#FFFFFF' : 'var(--text-secondary)',
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegister(true)
+                setError(null)
+              }}
+              style={{
+                ...styles.tabBtn,
+                background: isRegister ? 'var(--pink-primary)' : 'transparent',
+                color: isRegister ? '#FFFFFF' : 'var(--text-secondary)',
+              }}
+            >
+              Create Account
+            </button>
+          </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div style={styles.errorBox}>
+              <AlertCircle size={16} color="#EF4444" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} style={styles.form}>
             {isRegister && (
               <div style={styles.inputGroup}>
-                <label style={styles.label}>Full Name</label>
-                <div style={styles.inputWrapper}>
-                  <User size={18} color="#6B7280" />
+                <label style={styles.inputLabel}>Full Name</label>
+                <div style={styles.inputWrap}>
+                  <User size={16} color="var(--pink-soft)" />
                   <input
                     type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="John Doe"
-                    style={styles.input}
                     required
+                    placeholder="e.g. Alex Johnson"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    style={styles.input}
                   />
                 </div>
               </div>
             )}
 
             <div style={styles.inputGroup}>
-              <label style={styles.label}>Email</label>
-              <div style={styles.inputWrapper}>
-                <Mail size={18} color="#6B7280" />
+              <label style={styles.inputLabel}>Email Address</label>
+              <div style={styles.inputWrap}>
+                <Mail size={16} color="var(--pink-soft)" />
                 <input
                   type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="you@example.com"
-                  style={styles.input}
                   required
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={styles.input}
                 />
               </div>
             </div>
 
             <div style={styles.inputGroup}>
-              <label style={styles.label}>Password</label>
-              <div style={styles.inputWrapper}>
-                <Lock size={18} color="#6B7280" />
+              <label style={styles.inputLabel}>Password</label>
+              <div style={styles.inputWrap}>
+                <Lock size={16} color="var(--pink-soft)" />
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  style={styles.input}
+                  type="password"
                   required
-                  minLength={6}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={styles.input}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
             </div>
+
+            {isRegister && (
+              <div style={styles.inputGroup}>
+                <label style={styles.inputLabel}>Confirm Password</label>
+                <div style={styles.inputWrap}>
+                  <Lock size={16} color="var(--pink-soft)" />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              style={{
-                ...styles.submitBtn,
-                opacity: loading ? 0.6 : 1,
-              }}
+              className="btn-primary"
+              style={styles.submitBtn}
             >
-              {loading ? (
-                <>
-                  <Loader2 size={18} className="spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {isRegister ? 'Create Account' : 'Sign In'}
-                  <ArrowRight size={18} />
-                </>
-              )}
+              {loading ? 'Processing...' : isRegister ? 'Create My Account' : 'Sign In'}
+              <ArrowRight size={16} />
             </button>
           </form>
 
-          {/* Toggle */}
-          <p style={styles.toggleText}>
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => {
-                setIsRegister(!isRegister)
-                setError('')
-                setSuccess('')
-              }}
-              style={styles.toggleBtn}
-            >
-              {isRegister ? 'Sign In' : 'Register'}
-            </button>
-          </p>
-        </motion.div>
-      </div>
+          {/* Guest Mode Divider */}
+          <div style={styles.divider}>
+            <span>OR</span>
+          </div>
 
-      <style>{`
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+          <button onClick={handleGuestContinue} className="btn-secondary" style={styles.guestBtn}>
+            <Sparkles size={16} color="var(--pink-soft)" />
+            Continue in Guest Mode (Offline)
+          </button>
+        </div>
+      </div>
+    </main>
   )
 }
 
 const styles = {
   container: {
-    minHeight: 'calc(100vh - 70px)',
+    padding: '36px 24px 80px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '40px 24px',
+    minHeight: 'calc(100vh - 140px)',
   },
-  card: {
-    width: '100%',
+  authCard: {
     maxWidth: '440px',
-    padding: '40px',
+    width: '100%',
+    padding: '36px 30px',
+    borderRadius: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    background: 'linear-gradient(180deg, #1C0B18 0%, #0B080D 100%)',
+    border: '1.5px solid rgba(255, 46, 147, 0.35)',
+    boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(255, 46, 147, 0.2)',
   },
-  logoSection: {
+  header: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     textAlign: 'center',
-    marginBottom: '32px',
+    gap: '8px',
   },
   logoIcon: {
-    width: '56px',
-    height: '56px',
-    borderRadius: '16px',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
+    width: '46px',
+    height: '46px',
+    borderRadius: '14px',
+    background: 'linear-gradient(135deg, #FF2E93 0%, #C026D3 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: '0 auto 16px',
+    marginBottom: '4px',
+    boxShadow: '0 0 20px rgba(255, 46, 147, 0.4)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
   },
-  logoText: {
+  title: {
     fontSize: '1.6rem',
-    fontWeight: 800,
+    fontWeight: 900,
     fontFamily: "'Space Grotesk', sans-serif",
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    marginBottom: '8px',
+    color: '#FFFFFF',
   },
-  logoSubtext: {
-    fontSize: '0.9rem',
-    color: '#9CA3AF',
+  subtitle: {
+    fontSize: '0.84rem',
+    color: 'var(--text-secondary)',
+    lineHeight: 1.5,
+  },
+  tabsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '12px',
+    padding: '4px',
+  },
+  tabBtn: {
+    flex: 1,
+    padding: '8px',
+    borderRadius: '8px',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   errorBox: {
-    padding: '12px 16px',
-    background: 'rgba(239, 68, 68, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 14px',
+    background: 'rgba(239, 68, 68, 0.15)',
     border: '1px solid rgba(239, 68, 68, 0.3)',
     borderRadius: '10px',
+    fontSize: '0.8rem',
     color: '#EF4444',
-    fontSize: '0.85rem',
-    marginBottom: '16px',
-  },
-  successBox: {
-    padding: '12px 16px',
-    background: 'rgba(34, 197, 94, 0.1)',
-    border: '1px solid rgba(34, 197, 94, 0.3)',
-    borderRadius: '10px',
-    color: '#22C55E',
-    fontSize: '0.85rem',
-    marginBottom: '16px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '16px',
   },
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: '6px',
   },
-  label: {
-    fontSize: '0.8rem',
+  inputLabel: {
+    fontSize: '0.78rem',
     fontWeight: 600,
-    color: '#9CA3AF',
+    color: 'var(--text-secondary)',
   },
-  inputWrapper: {
+  inputWrap: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    padding: '12px 16px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    padding: '12px 14px',
+    background: 'rgba(0, 0, 0, 0.4)',
+    border: '1px solid var(--border-color)',
     borderRadius: '12px',
-    transition: 'border-color 0.3s',
   },
   input: {
-    flex: 1,
-    background: 'transparent',
-    border: 'none',
-    outline: 'none',
-    color: '#fff',
-    fontSize: '0.95rem',
-  },
-  eyeBtn: {
     background: 'none',
     border: 'none',
-    color: '#6B7280',
-    cursor: 'pointer',
-    padding: 0,
+    color: 'var(--text-primary)',
+    fontSize: '0.9rem',
+    width: '100%',
   },
   submitBtn: {
+    width: '100%',
+    padding: '12px',
+    fontSize: '0.9rem',
+    marginTop: '6px',
+  },
+  divider: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    color: 'var(--text-muted)',
+    fontSize: '0.74rem',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    position: 'relative',
+    margin: '2px 0',
+  },
+  guestBtn: {
+    width: '100%',
+    padding: '11px',
+    fontSize: '0.84rem',
     gap: '8px',
-    padding: '14px',
-    background: 'linear-gradient(135deg, #6C63FF, #00D4FF)',
-    color: '#fff',
-    fontSize: '1rem',
-    fontWeight: 600,
-    borderRadius: '12px',
-    border: 'none',
-    cursor: 'pointer',
-    marginTop: '8px',
-    transition: 'all 0.3s',
-  },
-  toggleText: {
-    textAlign: 'center',
-    marginTop: '24px',
-    fontSize: '0.85rem',
-    color: '#6B7280',
-  },
-  toggleBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#6C63FF',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontSize: '0.85rem',
   },
 }
