@@ -3,60 +3,12 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
 
-// Placeholder pages (we'll build these next)
-function Translator() {
-  return (
-    <div className="page-wrapper" style={{ padding: '120px 24px', textAlign: 'center' }}>
-      <h1>🎥 Live Translator</h1>
-      <p style={{ color: '#9CA3AF', marginTop: '12px' }}>Coming next...</p>
-    </div>
-  )
-}
-
-function Learn() {
-  return (
-    <div className="page-wrapper" style={{ padding: '120px 24px', textAlign: 'center' }}>
-      <h1>📚 Learn ISL</h1>
-      <p style={{ color: '#9CA3AF', marginTop: '12px' }}>Coming soon...</p>
-    </div>
-  )
-}
-
-function Practice() {
-  return (
-    <div className="page-wrapper" style={{ padding: '120px 24px', textAlign: 'center' }}>
-      <h1>🎮 Practice Mode</h1>
-      <p style={{ color: '#9CA3AF', marginTop: '12px' }}>Coming soon...</p>
-    </div>
-  )
-}
-
-function History() {
-  return (
-    <div className="page-wrapper" style={{ padding: '120px 24px', textAlign: 'center' }}>
-      <h1>📊 Translation History</h1>
-      <p style={{ color: '#9CA3AF', marginTop: '12px' }}>Coming soon...</p>
-    </div>
-  )
-}
-
-function About() {
-  return (
-    <div className="page-wrapper" style={{ padding: '120px 24px', textAlign: 'center' }}>
-      <h1>ℹ️ About SIGNOVA</h1>
-      <p style={{ color: '#9CA3AF', marginTop: '12px' }}>Coming soon...</p>
-    </div>
-  )
-}
-
-function Login() {
-  return (
-    <div className="page-wrapper" style={{ padding: '120px 24px', textAlign: 'center' }}>
-      <h1>🔐 Login</h1>
-      <p style={{ color: '#9CA3AF', marginTop: '12px' }}>Coming soon...</p>
-    </div>
-  )
-}
+import Translator from './pages/Translator'
+import Learn from './pages/Learn'
+import Practice from './pages/Practice'
+import History from './pages/History'
+import About from './pages/About'
+import Login from './pages/Login'
 
 export default function App() {
   return (

@@ -254,4 +254,22 @@ input, textarea {
     padding: 12px 24px;
     font-size: 0.9rem;
   }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-only {
+    display: flex !important;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
 }

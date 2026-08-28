@@ -62,7 +62,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Links */}
-          <div style={styles.desktopLinks}>
+          <div className="desktop-only" style={styles.desktopLinks}>
             {navLinks.map((link) => {
               const isActive = location.pathname === link.path
               return (
@@ -89,7 +89,7 @@ export default function Navbar() {
           </div>
 
           {/* Login Button */}
-          <Link to="/login" style={styles.loginBtn}>
+          <Link to="/login" className="desktop-only" style={styles.loginBtn}>
             <LogIn size={16} />
             Login
           </Link>
@@ -97,7 +97,9 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
+            className="mobile-only"
             style={styles.menuBtn}
+            aria-label="Toggle navigation menu"
           >
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -286,23 +288,4 @@ const styles = {
     textDecoration: 'none',
     marginTop: '8px',
   },
-}
-
-// Responsive override via media query
-const styleSheet = document.createElement('style')
-styleSheet.textContent = `
-  @media (max-width: 768px) {
-    .desktop-only { display: none !important; }
-  }
-  @media (min-width: 769px) {
-    .mobile-only { display: none !important; }
-  }
-`
-document.head.appendChild(styleSheet)
-
-// Update the nav styles for mobile
-if (window.innerWidth <= 768) {
-  styles.desktopLinks.display = 'none'
-  styles.loginBtn.display = 'none'
-  styles.menuBtn.display = 'block'
 }

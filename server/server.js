@@ -1,15 +1,18 @@
+const path = require('path')
+const fs = require('fs')
 const express = require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
-const connectDB = require('./config/db')
 
-dotenv.config()
+dotenv.config({ path: path.join(__dirname, '.env') })
+
+const connectDB = require('./config/db')
 
 const app = express()
 
 // ── Middleware ──
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite default
+  origin: process.env.CLIENT_URL || true,
   credentials: true,
 }))
 app.use(express.json())
@@ -28,13 +31,22 @@ app.get('/api/health', (req, res) => {
   })
 })
 
-// ── 404 Handler ──
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
+// ── Serve Frontend in Production / Standalone Mode ──
+const distPath = path.join(__dirname, '../client/dist')
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath))
+  app.use((req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'))
   })
-})
+} else {
+  // ── 404 Handler for API ──
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      message: `Route ${req.originalUrl} not found`,
+    })
+  })
+}
 
 // ── Error Handler ──
 app.use((err, req, res, next) => {

@@ -6,14 +6,12 @@ import {
   Gamepad2,
   Shield,
   Zap,
-  Globe,
   ArrowRight,
   Hand,
   Brain,
   MessageSquare,
   Volume2,
   BarChart3,
-  Users
 } from 'lucide-react'
 
 const fadeInUp = {
